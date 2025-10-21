@@ -203,6 +203,109 @@ def view_students():
     return render_template('view_students.html', students=students)
 
 #########################
+# TIMETABLE MANAGEMENT ROUTES (Teacher only)
+#########################
+
+@app.route('/timetable/manage', methods=['GET', 'POST'])
+@login_required
+def manage_timetable():
+    """Teacher manages timetable entries"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    if request.method == 'POST':
+        class_name = request.form.get('class_name')
+        day_of_week = request.form.get('day_of_week')
+        period = request.form.get('period')
+        subject = request.form.get('subject')
+        start_time = request.form.get('start_time')
+        end_time = request.form.get('end_time')
+        
+        # Validation
+        if not class_name or not day_of_week or not period:
+            flash('Class, Day, and Period are required!', 'error')
+        else:
+            # Create new timetable entry
+            new_entry = Timetable(
+                class_name=class_name,
+                day_of_week=day_of_week,
+                period=period,
+                subject=subject,
+                start_time=start_time,
+                end_time=end_time
+            )
+            db.add(new_entry)
+            db.commit()
+            flash(f'Timetable entry added successfully for {class_name} - {day_of_week} - {period}!', 'success')
+    
+    # Get all timetable entries sorted by day and period
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    timetable_entries = db.query(Timetable).all()
+    
+    # Sort entries
+    timetable_entries.sort(key=lambda x: (day_order.index(x.day_of_week) if x.day_of_week in day_order else 999, x.period))
+    
+    db.close()
+    
+    return render_template('manage_timetable.html', timetable_entries=timetable_entries)
+
+@app.route('/timetable/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_timetable(id):
+    """Delete a timetable entry"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    entry = db.query(Timetable).get(id)
+    
+    if entry:
+        db.delete(entry)
+        db.commit()
+        flash('Timetable entry deleted successfully!', 'success')
+    else:
+        flash('Timetable entry not found!', 'error')
+    
+    db.close()
+    return redirect(url_for('manage_timetable'))
+
+@app.route('/timetable/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_timetable(id):
+    """Edit a timetable entry"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    entry = db.query(Timetable).get(id)
+    
+    if not entry:
+        flash('Timetable entry not found!', 'error')
+        db.close()
+        return redirect(url_for('manage_timetable'))
+    
+    if request.method == 'POST':
+        entry.class_name = request.form.get('class_name')
+        entry.day_of_week = request.form.get('day_of_week')
+        entry.period = request.form.get('period')
+        entry.subject = request.form.get('subject')
+        entry.start_time = request.form.get('start_time')
+        entry.end_time = request.form.get('end_time')
+        
+        db.commit()
+        flash('Timetable entry updated successfully!', 'success')
+        db.close()
+        return redirect(url_for('manage_timetable'))
+    
+    db.close()
+    return render_template('edit_timetable.html', entry=entry)
+
+#########################
 # STUDENT ROUTES
 #########################
 
