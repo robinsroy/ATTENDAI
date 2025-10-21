@@ -1,0 +1,15 @@
+# Virtual environment
+attend/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE files (optional)
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Attendance System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .user-info {
+            font-size: 14px;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 20px;
+            border: 1px solid white;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .welcome-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .welcome-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .welcome-card p {
+            color: #666;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .menu-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .menu-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .menu-card.disabled:hover {
+            transform: none;
+        }
+        
+        .menu-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .menu-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .menu-card p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .badge.coming-soon {
+            background: #ffa500;
+        }
+        
+        .badge.active {
+            background: #28a745;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .flash.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🎓 Attendance System - Teacher Portal</h1>
+            <div class="header-right">
+                <div class="user-info">
+                    <strong>{{ user.username }}</strong> (Teacher)
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="welcome-card">
+            <h2>Welcome back, {{ user.username }}! 👋</h2>
+            <p>Manage your classes, students, and attendance from this dashboard.</p>
+        </div>
+        
+        <div class="menu-grid">
+            <a href="{{ url_for('register_student') }}" class="menu-card">
+                <div class="menu-icon">👥</div>
+                <h3>Register Students</h3>
+                <p>Add new students to the system</p>
+                <span class="badge">Phase 3 - Active</span>
+            </a>
+            
+            <a href="{{ url_for('view_students') }}" class="menu-card">
+                <div class="menu-icon">📋</div>
+                <h3>View Students</h3>
+                <p>See all registered students</p>
+                <span class="badge">Phase 3 - Active</span>
+            </a>
+            
+            <div class="menu-card disabled">
+                <div class="menu-icon">📅</div>
+                <h3>Manage Timetable</h3>
+                <p>Create and edit class schedules</p>
+                <span class="badge coming-soon">Coming in Phase 5</span>
+            </div>
+            
+            <div class="menu-card disabled">
+                <div class="menu-icon">✅</div>
+                <h3>Mark Attendance</h3>
+                <p>Start face recognition for attendance</p>
+                <span class="badge coming-soon">Coming in Phase 8</span>
+            </div>
+            
+            <div class="menu-card disabled">
+                <div class="menu-icon">📊</div>
+                <h3>View Reports</h3>
+                <p>Check attendance reports and statistics</p>
+                <span class="badge coming-soon">Coming Later</span>
+            </div>
+            
+            <div class="menu-card disabled">
+                <div class="menu-icon">⚙️</div>
+                <h3>Settings</h3>
+                <p>Update your profile and preferences</p>
+                <span class="badge coming-soon">Coming Later</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
