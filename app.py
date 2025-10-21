@@ -202,6 +202,93 @@ def view_students():
     
     return render_template('view_students.html', students=students)
 
+#########################
+# STUDENT ROUTES
+#########################
+
+@app.route('/student/login', methods=['GET', 'POST'])
+def student_login():
+    if current_user.is_authenticated and current_user.role == 'student':
+        return redirect(url_for('student_dashboard'))
+    
+    if request.method == 'POST':
+        roll_no = request.form.get('roll_no')
+        password = request.form.get('password')
+        
+        db = SessionLocal()
+        user = db.query(User).filter(User.username == roll_no, User.role == 'student').first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            flash('Login successful! Welcome back.', 'success')
+            db.close()
+            return redirect(url_for('student_dashboard'))
+        else:
+            flash('Invalid roll number or password!', 'error')
+            db.close()
+    
+    return render_template('student_login.html')
+
+@app.route('/student/dashboard')
+@login_required
+def student_dashboard():
+    if current_user.role != 'student':
+        flash('Access denied! Students only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    student = db.query(Student).get(current_user.student_id)
+    
+    # Get attendance records for this student
+    attendance_records = db.query(Attendance).filter(
+        Attendance.student_id == current_user.student_id
+    ).order_by(Attendance.date.desc()).all()
+    
+    db.close()
+    
+    return render_template('student_dashboard.html', 
+                         user=current_user, 
+                         student=student,
+                         attendance_records=attendance_records)
+
+@app.route('/student/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if current_user.role != 'student':
+        flash('Access denied! Students only.', 'error')
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validation
+        if not current_password or not new_password:
+            flash('All fields are required!', 'error')
+            return render_template('change_password.html')
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match!', 'error')
+            return render_template('change_password.html')
+        
+        # Check current password
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Current password is incorrect!', 'error')
+            return render_template('change_password.html')
+        
+        # Update password
+        db = SessionLocal()
+        user = db.query(User).get(current_user.id)
+        user.password_hash = generate_password_hash(new_password)
+        db.commit()
+        db.close()
+        
+        flash('Password changed successfully!', 'success')
+        return redirect(url_for('student_dashboard'))
+    
+    return render_template('change_password.html')
+
 # Setup demo route - creates initial test data
 @app.route('/setup_demo')
 def setup_demo():
