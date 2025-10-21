@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Student - Attendance System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 20px;
+            border: 1px solid white;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .form-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .required {
+            color: red;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .flash.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box h4 {
+            color: #1976D2;
+            margin-bottom: 5px;
+        }
+        
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .warning-box h4 {
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        
+        .camera-section {
+            text-align: center;
+        }
+        
+        #video {
+            width: 100%;
+            max-width: 640px;
+            border-radius: 10px;
+            background: #000;
+            display: none;
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            max-width: 640px;
+            height: 480px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            margin: 0 auto 20px auto;
+            border: 2px dashed #ddd;
+        }
+        
+        .video-placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+        
+        .camera-controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .captures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .capture-item {
+            position: relative;
+        }
+        
+        .capture-item img {
+            width: 100%;
+            border-radius: 5px;
+            border: 2px solid #667eea;
+        }
+        
+        .capture-count {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .status-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .status-message.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status-message.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .status-message.warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>👥 Register New Student</h1>
+            <a href="{{ url_for('teacher_dashboard') }}" class="back-btn">← Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Step 1: Basic Information -->
+        <div class="form-card" id="step1">
+            <h2>Step 1: Student Information</h2>
+            <p class="subtitle">Fill in the student details</p>
+            
+            <div class="info-box">
+                <h4>📌 Auto-Generated Credentials</h4>
+                <p><strong>Username:</strong> Same as Roll Number</p>
+                <p><strong>Default Password:</strong> Same as Roll Number</p>
+                <p><small>Students can change their password after first login</small></p>
+            </div>
+            
+            <form id="studentInfoForm">
+                <div class="form-group">
+                    <label>Student Name <span class="required">*</span></label>
+                    <input type="text" id="name" name="name" required placeholder="Enter full name">
+                </div>
+                
+                <div class="form-group">
+                    <label>Roll Number <span class="required">*</span></label>
+                    <input type="text" id="roll_no" name="roll_no" required placeholder="e.g., S101, 2024CS001">
+                </div>
+                
+                <div class="form-group">
+                    <label>Class/Section</label>
+                    <input type="text" id="class_name" name="class_name" placeholder="e.g., Class A, Grade 10">
+                </div>
+                
+                <div class="form-group">
+                    <label>Email (Optional)</label>
+                    <input type="email" id="email" name="email" placeholder="student@example.com">
+                </div>
+                
+                <button type="button" class="btn" onclick="goToStep2()">Next: Capture Face →</button>
+            </form>
+        </div>
+        
+        <!-- Step 2: Face Capture -->
+        <div class="form-card" id="step2" style="display: none;">
+            <h2>Step 2: Face Enrollment</h2>
+            <p class="subtitle">Capture student's face for attendance recognition</p>
+            
+            <div class="warning-box">
+                <h4>⚠️ Important Guidelines</h4>
+                <p>• Ensure good lighting conditions</p>
+                <p>• Look directly at the camera</p>
+                <p>• Remove glasses/mask if possible</p>
+                <p>• Keep face centered in the frame</p>
+            </div>
+            
+            <div class="camera-section">
+                <div class="video-placeholder" id="videoPlaceholder">
+                    <div class="video-placeholder-icon">📷</div>
+                    <p>Click "Start Camera" to begin</p>
+                </div>
+                <video id="video" width="640" height="480" autoplay></video>
+                
+                <div class="camera-controls">
+                    <button type="button" class="btn" id="startCameraBtn" onclick="startCamera()">Start Camera</button>
+                    <button type="button" class="btn btn-secondary" id="captureBtn" onclick="captureFrames()" style="display: none;">Capture Face (15 samples)</button>
+                    <button type="button" class="btn" id="submitBtn" onclick="submitEnrollment()" style="display: none;" disabled>Complete Registration</button>
+                </div>
+                
+                <div id="captureStatus"></div>
+                <div class="progress-bar" id="progressBarContainer" style="display: none;">
+                    <div class="progress-fill" id="progressBar"></div>
+                </div>
+                <div id="captureCount"></div>
+                
+                <div class="captures-grid" id="capturesGrid"></div>
+                
+                <button type="button" class="btn btn-secondary" onclick="goToStep1()">← Back to Info</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let video = document.getElementById('video');
+        let capturedImages = [];
+        let stream = null;
+        
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 640, 
+                        height: 480 
+                    } 
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('videoPlaceholder').style.display = 'none';
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('captureBtn').style.display = 'inline-block';
+                showStatus('Camera started! Position your face and click "Capture Face"', 'info');
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+            }
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('captureStatus');
+            statusDiv.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+        }
+        
+        async function captureFrames() {
+            const captureBtn = document.getElementById('captureBtn');
+            const progressContainer = document.getElementById('progressBarContainer');
+            const progressBar = document.getElementById('progressBar');
+            
+            captureBtn.disabled = true;
+            capturedImages = [];
+            document.getElementById('capturesGrid').innerHTML = '';
+            progressContainer.style.display = 'block';
+            
+            showStatus('📸 Capturing 15 face samples... Please stay still!', 'info');
+            
+            const totalFrames = 15;
+            const delayBetweenFrames = 200; // 200ms between captures
+            
+            for (let i = 0; i < totalFrames; i++) {
+                await new Promise(resolve => setTimeout(resolve, delayBetweenFrames));
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                
+                capturedImages.push(imageData);
+                
+                // Show thumbnail
+                const img = document.createElement('img');
+                img.src = imageData;
+                img.className = 'capture-thumbnail';
+                const captureItem = document.createElement('div');
+                captureItem.className = 'capture-item';
+                captureItem.appendChild(img);
+                document.getElementById('capturesGrid').appendChild(captureItem);
+                
+                // Update progress
+                const progress = ((i + 1) / totalFrames) * 100;
+                progressBar.style.width = progress + '%';
+                
+                document.getElementById('captureCount').innerHTML = 
+                    `<div class="capture-count">Captured: ${i + 1}/${totalFrames}</div>`;
+            }
+            
+            captureBtn.disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').style.display = 'inline-block';
+            showStatus('✅ Face capture complete! Click "Complete Registration" to save.', 'success');
+        }
+        
+        async function submitEnrollment() {
+            const name = document.getElementById('name').value;
+            const roll_no = document.getElementById('roll_no').value;
+            const class_name = document.getElementById('class_name').value;
+            const email = document.getElementById('email').value;
+            
+            if (!name || !roll_no) {
+                alert('Please fill in required fields!');
+                goToStep1();
+                return;
+            }
+            
+            if (capturedImages.length === 0) {
+                alert('Please capture face images first!');
+                return;
+            }
+            
+            showStatus('⏳ Processing and saving face data... Please wait.', 'info');
+            document.getElementById('submitBtn').disabled = true;
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('roll_no', roll_no);
+            formData.append('class_name', class_name);
+            formData.append('email', email);
+            
+            // Send all captured images
+            capturedImages.forEach((img, index) => {
+                formData.append('images[]', img);
+            });
+            
+            try {
+                const response = await fetch('{{ url_for("enroll_student_with_face") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showStatus('✅ Student registered successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("view_students") }}';
+                    }, 2000);
+                } else {
+                    showStatus('❌ Error: ' + result.message, 'warning');
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            } catch (error) {
+                showStatus('❌ Error submitting form: ' + error.message, 'warning');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+        
+        function goToStep2() {
+            const name = document.getElementById('name').value;
+            const roll_no = document.getElementById('roll_no').value;
+            
+            if (!name || !roll_no) {
+                alert('Please fill in Name and Roll Number!');
+                return;
+            }
+            
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+        }
+        
+        function goToStep1() {
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1').style.display = 'block';
+            
+            // Stop camera
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.style.display = 'none';
+                document.getElementById('videoPlaceholder').style.display = 'flex';
+            }
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

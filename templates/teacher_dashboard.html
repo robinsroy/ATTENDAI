@@ -202,18 +202,25 @@
         </div>
         
         <div class="menu-grid">
+            <a href="{{ url_for('register_student_with_face') }}" class="menu-card">
+                <div class="menu-icon">�</div>
+                <h3>Register Student (with Face)</h3>
+                <p>Enroll student with face recognition</p>
+                <span class="badge" style="background: #4CAF50;">Phase 7 - NEW!</span>
+            </a>
+            
             <a href="{{ url_for('register_student') }}" class="menu-card">
                 <div class="menu-icon">👥</div>
-                <h3>Register Students</h3>
-                <p>Add new students to the system</p>
-                <span class="badge">Phase 3 - Active</span>
+                <h3>Register Students (Basic)</h3>
+                <p>Add students without face data</p>
+                <span class="badge">Phase 3</span>
             </a>
             
             <a href="{{ url_for('view_students') }}" class="menu-card">
                 <div class="menu-icon">📋</div>
                 <h3>View Students</h3>
                 <p>See all registered students</p>
-                <span class="badge">Phase 3 - Active</span>
+                <span class="badge">Phase 3</span>
             </a>
             
             <a href="{{ url_for('manage_timetable') }}" class="menu-card">

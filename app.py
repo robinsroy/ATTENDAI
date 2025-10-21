@@ -1,6 +1,9 @@
 # app.py
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+import cv2
+import base64
+import numpy as np
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import Base, engine, SessionLocal, User, Student, Timetable, Attendance
@@ -15,6 +18,9 @@ app.secret_key = 'your-secret-key-change-this-in-production'  # Change this in p
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Global variable for face recognition enrolled students
+ENROLLED = {}
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -201,6 +207,131 @@ def view_students():
     db.close()
     
     return render_template('view_students.html', students=students)
+
+@app.route('/students/register-with-face', methods=['GET', 'POST'])
+@login_required
+def register_student_with_face():
+    """Register student with face capture (NEW - Phase 7)"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    if request.method == 'GET':
+        return render_template('register_student_with_face.html')
+    
+    # POST - Handle enrollment with face data
+    return render_template('register_student_with_face.html')
+
+@app.route('/students/enroll-with-face', methods=['POST'])
+@login_required
+def enroll_student_with_face():
+    """Process student enrollment with face embeddings"""
+    if current_user.role != 'teacher':
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+    
+    try:
+        # Get form data
+        name = request.form.get('name')
+        roll_no = request.form.get('roll_no')
+        class_name = request.form.get('class_name')
+        email = request.form.get('email')
+        images = request.form.getlist('images[]')
+        
+        # Validation
+        if not name or not roll_no:
+            return jsonify({'status': 'error', 'message': 'Name and Roll Number are required'})
+        
+        if len(images) == 0:
+            return jsonify({'status': 'error', 'message': 'No face images captured'})
+        
+        db = SessionLocal()
+        
+        # Check if roll number exists
+        existing_student = db.query(Student).filter(Student.roll_no == roll_no).first()
+        if existing_student:
+            db.close()
+            return jsonify({'status': 'error', 'message': 'Roll Number already exists'})
+        
+        # Create student record
+        new_student = Student(
+            name=name,
+            roll_no=roll_no,
+            class_name=class_name,
+            email=email
+        )
+        db.add(new_student)
+        db.commit()
+        student_id = new_student.id
+        
+        # Create user account
+        student_user = User(
+            username=roll_no,
+            password_hash=generate_password_hash(roll_no),
+            role='student',
+            student_id=student_id,
+            email=email
+        )
+        db.add(student_user)
+        db.commit()
+        
+        # Process face images and generate embeddings
+        from face_utils import get_embeddings_from_image_bgr, append_embedding_for_student
+        import base64
+        import numpy as np
+        
+        successful_embeddings = 0
+        failed_images = 0
+        
+        # Create dataset folder for raw images (optional)
+        student_folder = os.path.join('dataset', roll_no)
+        os.makedirs(student_folder, exist_ok=True)
+        
+        for idx, img_data in enumerate(images):
+            try:
+                # Decode base64 image
+                header, encoded = img_data.split(',', 1)
+                img_bytes = base64.b64decode(encoded)
+                img_array = np.frombuffer(img_bytes, np.uint8)
+                img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                
+                # Save raw image (optional)
+                cv2.imwrite(os.path.join(student_folder, f'sample_{idx}.jpg'), img)
+                
+                # Extract face embeddings
+                embeddings, faces = get_embeddings_from_image_bgr(img, enforce_detection=False)
+                
+                # Save embeddings if face detected
+                if len(embeddings) > 0:
+                    for emb in embeddings:
+                        append_embedding_for_student(str(student_id), emb)
+                        successful_embeddings += 1
+                else:
+                    failed_images += 1
+                    
+            except Exception as e:
+                print(f"Error processing image {idx}: {str(e)}")
+                failed_images += 1
+        
+        # Update student record with encodings path
+        new_student.encodings_path = f"encodings/{student_id}.npy"
+        db.commit()
+        db.close()
+        
+        # Reload enrollment database in memory
+        global ENROLLED
+        from face_utils import load_all_enrollments
+        ENROLLED = load_all_enrollments()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Student registered! {successful_embeddings} face samples saved.',
+            'student_id': student_id,
+            'successful_embeddings': successful_embeddings,
+            'failed_images': failed_images
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 #########################
 # TIMETABLE MANAGEMENT ROUTES (Teacher only)
