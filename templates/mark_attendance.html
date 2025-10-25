@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark Attendance - Attendance System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+        
+        .back-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-btn:hover {
+            background: #5568d3;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        
+        .video-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .control-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        #videoElement {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            display: none;
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .btn-start {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: #45a049;
+        }
+        
+        .btn-start:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-stop {
+            background: #f44336;
+            color: white;
+            display: none;
+        }
+        
+        .btn-stop:hover {
+            background: #da190b;
+        }
+        
+        .status-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status-idle {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .recognized-students {
+            margin-top: 20px;
+        }
+        
+        .recognized-students h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .student-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .student-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 4px solid #4CAF50;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .student-item .name {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .student-item .details {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .student-item .time {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-box .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-box .label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 Mark Attendance</h1>
+            <a href="/teacher/dashboard" class="back-btn">← Back to Dashboard</a>
+        </div>
+        
+        <div class="main-content">
+            <!-- Video Section -->
+            <div class="video-section">
+                <h2 style="color: #667eea; margin-bottom: 15px;">Live Camera Feed</h2>
+                <div id="videoPlaceholder" class="video-placeholder">
+                    <p>Camera will start when session begins</p>
+                </div>
+                <video id="videoElement" autoplay playsinline></video>
+            </div>
+            
+            <!-- Control Section -->
+            <div class="control-section">
+                <div id="statusBox" class="status-box status-idle">
+                    Status: Idle
+                </div>
+                
+                <div class="form-group">
+                    <label for="classSelect">Select Class:</label>
+                    <select id="classSelect">
+                        <option value="">-- Select Class --</option>
+                        {% for class_name in classes %}
+                        <option value="{{ class_name }}">{{ class_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="periodSelect">Select Period:</label>
+                    <select id="periodSelect">
+                        <option value="">-- Select Period --</option>
+                        <option value="1">Period 1</option>
+                        <option value="2">Period 2</option>
+                        <option value="3">Period 3</option>
+                        <option value="4">Period 4</option>
+                        <option value="5">Period 5</option>
+                        <option value="6">Period 6</option>
+                        <option value="7">Period 7</option>
+                        <option value="8">Period 8</option>
+                    </select>
+                </div>
+                
+                <button id="startBtn" class="btn btn-start">Start Attendance Session</button>
+                <button id="stopBtn" class="btn btn-stop">Stop Session</button>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="number" id="recognizedCount">0</div>
+                        <div class="label">Students Marked</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number" id="enrolledCount">{{ enrolled_count }}</div>
+                        <div class="label">Total Enrolled</div>
+                    </div>
+                </div>
+                
+                <div class="recognized-students">
+                    <h3>✅ Recognized Students</h3>
+                    <div id="studentList" class="student-list">
+                        <p style="color: #999; text-align: center; padding: 20px;">
+                            No students recognized yet
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let videoElement = document.getElementById('videoElement');
+        let videoPlaceholder = document.getElementById('videoPlaceholder');
+        let startBtn = document.getElementById('startBtn');
+        let stopBtn = document.getElementById('stopBtn');
+        let statusBox = document.getElementById('statusBox');
+        let classSelect = document.getElementById('classSelect');
+        let periodSelect = document.getElementById('periodSelect');
+        let studentList = document.getElementById('studentList');
+        let recognizedCount = document.getElementById('recognizedCount');
+        
+        let stream = null;
+        let isSessionActive = false;
+        let recognitionInterval = null;
+        let recognizedStudents = new Set();
+        
+        // Start attendance session
+        startBtn.addEventListener('click', async () => {
+            const className = classSelect.value;
+            const period = periodSelect.value;
+            
+            if (!className || !period) {
+                alert('Please select both class and period!');
+                return;
+            }
+            
+            try {
+                // Start session on server
+                const response = await fetch('/attendance/start-session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        class_name: className,
+                        period: period
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to start session');
+                }
+                
+                // Start camera
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                videoElement.srcObject = stream;
+                videoElement.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                
+                // Update UI
+                isSessionActive = true;
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'block';
+                classSelect.disabled = true;
+                periodSelect.disabled = true;
+                updateStatus('Session Active - Recognizing Faces...', 'active');
+                
+                // Start recognition loop (every 2 seconds)
+                recognitionInterval = setInterval(captureAndRecognize, 2000);
+                
+            } catch (error) {
+                console.error('Error starting session:', error);
+                updateStatus('Error: ' + error.message, 'error');
+            }
+        });
+        
+        // Stop session
+        stopBtn.addEventListener('click', async () => {
+            try {
+                // Stop recognition loop
+                if (recognitionInterval) {
+                    clearInterval(recognitionInterval);
+                    recognitionInterval = null;
+                }
+                
+                // Stop camera
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                
+                // Stop session on server
+                await fetch('/attendance/stop-session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                // Update UI
+                videoElement.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+                isSessionActive = false;
+                startBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+                classSelect.disabled = false;
+                periodSelect.disabled = false;
+                updateStatus('Session Ended', 'idle');
+                
+            } catch (error) {
+                console.error('Error stopping session:', error);
+            }
+        });
+        
+        // Capture frame and send for recognition
+        async function captureAndRecognize() {
+            if (!isSessionActive || !videoElement.srcObject) {
+                console.log('⏸️ Skipping capture - session not active or no video');
+                return;
+            }
+            
+            console.log('📸 Capturing frame...');
+            
+            try {
+                // Capture frame from video
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                
+                if (canvas.width === 0 || canvas.height === 0) {
+                    console.warn('⚠️ Video not ready yet, dimensions are 0');
+                    return;
+                }
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElement, 0, 0);
+                
+                // Convert to base64
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                console.log(`✅ Image captured: ${imageData.length} bytes`);
+                
+                // Send to server
+                console.log('🚀 Sending to server...');
+                const response = await fetch('/attendance/recognize-frame', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                console.log(`📥 Response status: ${response.status}`);
+                const data = await response.json();
+                console.log('📦 Response data:', data);
+                
+                if (data.recognized && data.student) {
+                    const studentId = data.student.id;
+                    console.log(`✅ Student recognized: ${data.student.name} (ID: ${studentId})`);
+                    
+                    // Only add if not already recognized in this session
+                    if (!recognizedStudents.has(studentId)) {
+                        console.log('➕ Adding student to list');
+                        recognizedStudents.add(studentId);
+                        addStudentToList(data.student);
+                        recognizedCount.textContent = recognizedStudents.size;
+                    } else {
+                        console.log('ℹ️ Student already marked in this session');
+                    }
+                } else {
+                    console.log(`ℹ️ ${data.message || 'No recognition'}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error during recognition:', error);
+            }
+        }
+        
+        // Add recognized student to list
+        function addStudentToList(student) {
+            // Clear "no students" message
+            if (recognizedStudents.size === 1) {
+                studentList.innerHTML = '';
+            }
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            
+            const studentItem = document.createElement('div');
+            studentItem.className = 'student-item';
+            studentItem.innerHTML = `
+                <div class="name">${student.name}</div>
+                <div class="details">Roll No: ${student.roll_no} | Class: ${student.class_name}</div>
+                <div class="time">Marked at: ${timeStr}</div>
+            `;
+            
+            studentList.insertBefore(studentItem, studentList.firstChild);
+        }
+        
+        // Update status
+        function updateStatus(message, type) {
+            statusBox.textContent = 'Status: ' + message;
+            statusBox.className = 'status-box status-' + type;
+        }
+    </script>
+</body>
+</html>

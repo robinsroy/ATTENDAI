@@ -22,6 +22,18 @@ login_manager.login_view = 'login'
 # Global variable for face recognition enrolled students
 ENROLLED = {}
 
+# Load enrolled students at startup
+def init_face_recognition():
+    """Load all face encodings at application startup"""
+    global ENROLLED
+    try:
+        from face_utils import load_all_enrollments
+        ENROLLED = load_all_enrollments()
+        print(f"✅ Loaded {len(ENROLLED)} enrolled students for face recognition")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not load face encodings: {e}")
+        ENROLLED = {}
+
 @login_manager.user_loader
 def load_user(user_id):
     db = SessionLocal()
@@ -613,11 +625,251 @@ def check_db():
     finally:
         db.close()
 
+#########################
+# ATTENDANCE ROUTES
+#########################
+
+# Global variable for current attendance session
+attendance_session = {
+    'active': False,
+    'class_name': None,
+    'period': None,
+    'date': None,
+    'marked_students': set()
+}
+
+@app.route('/attendance/mark')
+@login_required
+def mark_attendance():
+    """Attendance marking page for teachers"""
+    if current_user.role != 'teacher':
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
+    db = SessionLocal()
+    try:
+        # Get unique class names from students
+        classes = db.query(Student.class_name).distinct().all()
+        classes = [c[0] for c in classes if c[0]]
+        
+        # Count enrolled students (with face encodings)
+        enrolled_count = db.query(Student).filter(Student.encodings_path.isnot(None)).count()
+        
+        return render_template('mark_attendance.html', 
+                             classes=classes,
+                             enrolled_count=enrolled_count)
+    finally:
+        db.close()
+
+@app.route('/attendance/start-session', methods=['POST'])
+@login_required
+def start_attendance_session():
+    """Start an attendance marking session"""
+    if current_user.role != 'teacher':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        data = request.json
+        class_name = data.get('class_name')
+        period = data.get('period')
+        
+        if not class_name or not period:
+            return jsonify({'error': 'Class and period are required'}), 400
+        
+        from datetime import date
+        today = date.today().isoformat()
+        
+        # Update global session
+        attendance_session['active'] = True
+        attendance_session['class_name'] = class_name
+        attendance_session['period'] = period
+        attendance_session['date'] = today
+        attendance_session['marked_students'] = set()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Attendance session started',
+            'session': {
+                'class_name': class_name,
+                'period': period,
+                'date': today
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/attendance/recognize-frame', methods=['POST'])
+@login_required
+def recognize_frame():
+    """Process a video frame and recognize faces"""
+    print("🔍 Recognition request received")
+    
+    if current_user.role != 'teacher':
+        print("❌ Access denied - not a teacher")
+        return jsonify({'error': 'Access denied'}), 403
+    
+    if not attendance_session['active']:
+        print("❌ No active session")
+        return jsonify({'error': 'No active session'}), 400
+    
+    print(f"✅ Session active: Class={attendance_session['class_name']}, Period={attendance_session['period']}")
+    print(f"📊 ENROLLED students: {len(ENROLLED)}")
+    
+    try:
+        data = request.json
+        image_data = data.get('image')
+        
+        if not image_data:
+            print("❌ No image data provided")
+            return jsonify({'error': 'No image provided'}), 400
+        
+        print("📸 Decoding image...")
+        # Decode base64 image
+        image_data = image_data.split(',')[1] if ',' in image_data else image_data
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            print("❌ Invalid image - could not decode")
+            return jsonify({'error': 'Invalid image'}), 400
+        
+        print(f"✅ Image decoded: {frame.shape}")
+        
+        # Import face recognition functions
+        from face_utils import get_embeddings_from_image_bgr, match_embedding_to_db
+        
+        print("🧠 Extracting face embeddings...")
+        # Extract embeddings from frame
+        embeddings_list, faces = get_embeddings_from_image_bgr(frame)
+        
+        if not embeddings_list or len(embeddings_list) == 0:
+            print("⚠️ No face detected in frame")
+            return jsonify({'recognized': False, 'message': 'No face detected'})
+        
+        # Use the first detected face
+        embedding = embeddings_list[0]
+        print(f"✅ Embeddings extracted: shape={embedding.shape}")
+        
+        # Match against enrolled students
+        print(f"🔍 Matching against {len(ENROLLED)} enrolled students...")
+        matched_id, confidence = match_embedding_to_db(embedding, ENROLLED, threshold=0.40)
+        
+        if matched_id is None:
+            print("⚠️ No match found")
+            return jsonify({'recognized': False, 'message': 'Face not recognized'})
+        
+        print(f"✅ Match found! Student ID: {matched_id}, Confidence: {confidence}")
+        
+        # Check if already marked in this session
+        if matched_id in attendance_session['marked_students']:
+            return jsonify({
+                'recognized': True,
+                'already_marked': True,
+                'message': 'Student already marked in this session'
+            })
+        
+        # Get student info and mark attendance
+        db = SessionLocal()
+        try:
+            student = db.query(Student).filter(Student.id == matched_id).first()
+            
+            if not student:
+                return jsonify({'recognized': False, 'message': 'Student not found in database'})
+            
+            # Check if already marked today for this period
+            from datetime import date
+            today = date.today().isoformat()
+            
+            existing = db.query(Attendance).filter(
+                Attendance.student_id == matched_id,
+                Attendance.date == today,
+                Attendance.period == attendance_session['period']
+            ).first()
+            
+            if existing:
+                attendance_session['marked_students'].add(matched_id)
+                return jsonify({
+                    'recognized': True,
+                    'already_marked': True,
+                    'student': {
+                        'id': student.id,
+                        'name': student.name,
+                        'roll_no': student.roll_no,
+                        'class_name': student.class_name
+                    },
+                    'message': 'Student already marked today for this period'
+                })
+            
+            # Mark attendance
+            attendance = Attendance(
+                student_id=matched_id,
+                date=today,
+                period=attendance_session['period'],
+                status='present'
+            )
+            db.add(attendance)
+            db.commit()
+            
+            # Add to session marked students
+            attendance_session['marked_students'].add(matched_id)
+            
+            return jsonify({
+                'recognized': True,
+                'newly_marked': True,
+                'student': {
+                    'id': student.id,
+                    'name': student.name,
+                    'roll_no': student.roll_no,
+                    'class_name': student.class_name
+                },
+                'confidence': float(confidence),
+                'message': f'Attendance marked for {student.name}'
+            })
+            
+        finally:
+            db.close()
+            
+    except Exception as e:
+        print(f"Error in recognize_frame: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/attendance/stop-session', methods=['POST'])
+@login_required
+def stop_attendance_session():
+    """Stop the current attendance session"""
+    if current_user.role != 'teacher':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        marked_count = len(attendance_session['marked_students'])
+        
+        # Reset session
+        attendance_session['active'] = False
+        attendance_session['class_name'] = None
+        attendance_session['period'] = None
+        attendance_session['date'] = None
+        attendance_session['marked_students'] = set()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Session ended. {marked_count} students marked.',
+            'marked_count': marked_count
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 50)
     print("🚀 Starting Attendance System")
     print("=" * 50)
     print("📍 Database initialized at: database.db")
+    
+    # Initialize face recognition
+    init_face_recognition()
+    
     print("🌐 Server running at: http://localhost:5000")
     print("=" * 50)
     print("\n🔗 Quick Links:")

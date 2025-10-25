@@ -77,8 +77,8 @@ def match_embedding_to_db(query_emb, enrolled_dict, threshold=0.40):
     Match a query embedding against enrolled student embeddings.
     
     Args:
-        query_emb: Query face embedding (numpy array)
-        enrolled_dict: Dictionary of {student_id: [embedding1, embedding2, ...]}
+        query_emb: Query face embedding (numpy array, 1D)
+        enrolled_dict: Dictionary of {student_id: embeddings_array (2D numpy array)}
         threshold: Minimum similarity score (0.35-0.45 recommended for VGG-Face)
     
     Returns:
@@ -88,7 +88,17 @@ def match_embedding_to_db(query_emb, enrolled_dict, threshold=0.40):
     best_id = None
     best_score = -1.0
     
+    # Ensure query is 1D
+    if len(query_emb.shape) > 1:
+        query_emb = query_emb.flatten()
+    
     for student_id, embeddings in enrolled_dict.items():
+        # embeddings is a 2D array: shape (num_samples, embedding_dim)
+        # We need to compare query against each sample
+        if len(embeddings.shape) == 1:
+            # Single embedding, reshape to 2D
+            embeddings = embeddings.reshape(1, -1)
+        
         for enrolled_emb in embeddings:
             # Calculate cosine similarity
             score = float(cosine_similarity(query_emb, enrolled_emb))
