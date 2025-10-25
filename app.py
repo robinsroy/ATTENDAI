@@ -395,6 +395,50 @@ def manage_timetable():
     
     return render_template('manage_timetable.html', timetable_entries=timetable_entries)
 
+@app.route('/timetable/bulk-add', methods=['POST'])
+@login_required
+def bulk_add_timetable():
+    """Add all 5 periods for a day at once"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    class_name = request.form.get('class_name')
+    day_of_week = request.form.get('day_of_week')
+    
+    if not class_name or not day_of_week:
+        flash('Class and Day are required!', 'error')
+        db.close()
+        return redirect(url_for('manage_timetable'))
+    
+    added_count = 0
+    
+    # Add all 5 periods
+    for i in range(1, 6):
+        subject = request.form.get(f'subject_{i}')
+        start_time = request.form.get(f'start_time_{i}')
+        end_time = request.form.get(f'end_time_{i}')
+        
+        if subject and start_time and end_time:
+            new_entry = Timetable(
+                class_name=class_name,
+                day_of_week=day_of_week,
+                period=str(i),  # Period 1, 2, 3, 4, 5
+                subject=subject,
+                start_time=start_time,
+                end_time=end_time
+            )
+            db.add(new_entry)
+            added_count += 1
+    
+    db.commit()
+    db.close()
+    
+    flash(f'Successfully added {added_count} periods for {class_name} - {day_of_week}!', 'success')
+    return redirect(url_for('manage_timetable'))
+
 @app.route('/timetable/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_timetable(id):
@@ -490,12 +534,59 @@ def student_dashboard():
         Attendance.student_id == current_user.student_id
     ).order_by(Attendance.date.desc()).all()
     
+    # Get timetable for student's class
+    timetable_entries = []
+    if student.class_name:
+        timetable_entries = db.query(Timetable).filter(
+            Timetable.class_name == student.class_name
+        ).order_by(Timetable.day_of_week, Timetable.period).all()
+    
+    # Organize timetable by day and period
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    timetable_grid = {}
+    all_periods = set()
+    
+    for entry in timetable_entries:
+        if entry.day_of_week not in timetable_grid:
+            timetable_grid[entry.day_of_week] = {}
+        timetable_grid[entry.day_of_week][entry.period] = entry
+        all_periods.add(entry.period)
+    
+    # Sort periods (Period 1, Period 2, etc.)
+    sorted_periods = sorted(list(all_periods), key=lambda x: int(x.split()[-1]) if x.split()[-1].isdigit() else 0)
+    
+    # Get today's date and day
+    from datetime import datetime
+    today = datetime.now()
+    today_date = today.strftime('%Y-%m-%d')
+    today_day = today.strftime('%A')
+    
+    # Create attendance lookup: {period: status} for today
+    today_attendance = {}
+    for record in attendance_records:
+        if record.date == today_date:
+            today_attendance[record.period] = record.status
+    
+    # Calculate attendance statistics
+    total_records = len(attendance_records)
+    present_count = sum(1 for r in attendance_records if r.status == 'Present')
+    attendance_percentage = round((present_count / total_records * 100), 1) if total_records > 0 else 0
+    
     db.close()
     
     return render_template('student_dashboard.html', 
                          user=current_user, 
                          student=student,
-                         attendance_records=attendance_records)
+                         attendance_records=attendance_records,
+                         timetable_grid=timetable_grid,
+                         days_order=days_order,
+                         sorted_periods=sorted_periods,
+                         today_day=today_day,
+                         today_date=today_date,
+                         today_attendance=today_attendance,
+                         attendance_percentage=attendance_percentage,
+                         total_records=total_records,
+                         present_count=present_count)
 
 @app.route('/student/change-password', methods=['GET', 'POST'])
 @login_required

@@ -201,6 +201,39 @@
             display: flex;
             gap: 5px;
         }
+        
+        .mode-btn {
+            padding: 12px 24px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .mode-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+        
+        .form-container {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -222,54 +255,214 @@
             {% endif %}
         {% endwith %}
         
-        <!-- Add Timetable Form -->
+        <!-- Mode Selector -->
         <div class="card">
-            <h2>➕ Add New Timetable Entry</h2>
-            <form method="POST" action="{{ url_for('manage_timetable') }}">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Class <span class="required">*</span></label>
-                        <input type="text" name="class_name" required placeholder="e.g., Class A, 10th Grade">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Day of Week <span class="required">*</span></label>
-                        <select name="day_of_week" required>
-                            <option value="">Select Day</option>
-                            <option value="Monday">Monday</option>
-                            <option value="Tuesday">Tuesday</option>
-                            <option value="Wednesday">Wednesday</option>
-                            <option value="Thursday">Thursday</option>
-                            <option value="Friday">Friday</option>
-                            <option value="Saturday">Saturday</option>
-                            <option value="Sunday">Sunday</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Period <span class="required">*</span></label>
-                        <input type="text" name="period" required placeholder="e.g., Period 1, Period 2">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Subject</label>
-                        <input type="text" name="subject" placeholder="e.g., Mathematics, Physics">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Start Time</label>
-                        <input type="time" name="start_time">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>End Time</label>
-                        <input type="time" name="end_time">
-                    </div>
-                </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+                <button class="mode-btn active" onclick="switchMode('bulk')">
+                    <span style="font-size: 20px;">⚡</span> Quick Add (5 Periods)
+                </button>
+                <button class="mode-btn" onclick="switchMode('single')">
+                    <span style="font-size: 20px;">➕</span> Single Entry
+                </button>
+            </div>
+
+            <!-- Bulk Add Form (Default) -->
+            <div id="bulkForm" class="form-container">
+                <h2>⚡ Quick Add - Full Day Schedule</h2>
+                <p style="color: #666; margin-bottom: 20px;">Add all 5 periods for a day at once</p>
                 
-                <button type="submit" class="btn btn-primary">Add Entry</button>
-            </form>
+                <form method="POST" action="{{ url_for('bulk_add_timetable') }}">
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label>Class <span class="required">*</span></label>
+                            <input type="text" name="class_name" id="bulk_class" required placeholder="e.g., 10, Class A">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Day of Week <span class="required">*</span></label>
+                            <select name="day_of_week" id="bulk_day" required>
+                                <option value="">Select Day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📚 Period 1</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Subject <span class="required">*</span></label>
+                                <input type="text" name="subject_1" required placeholder="e.g., Mathematics">
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time <span class="required">*</span></label>
+                                <input type="time" name="start_time_1" required value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label>End Time <span class="required">*</span></label>
+                                <input type="time" name="end_time_1" required value="10:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📚 Period 2</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Subject <span class="required">*</span></label>
+                                <input type="text" name="subject_2" required placeholder="e.g., Physics">
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time <span class="required">*</span></label>
+                                <input type="time" name="start_time_2" required value="10:00">
+                            </div>
+                            <div class="form-group">
+                                <label>End Time <span class="required">*</span></label>
+                                <input type="time" name="end_time_2" required value="11:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📚 Period 3</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Subject <span class="required">*</span></label>
+                                <input type="text" name="subject_3" required placeholder="e.g., Chemistry">
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time <span class="required">*</span></label>
+                                <input type="time" name="start_time_3" required value="11:00">
+                            </div>
+                            <div class="form-group">
+                                <label>End Time <span class="required">*</span></label>
+                                <input type="time" name="end_time_3" required value="12:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📚 Period 4</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Subject <span class="required">*</span></label>
+                                <input type="text" name="subject_4" required placeholder="e.g., English">
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time <span class="required">*</span></label>
+                                <input type="time" name="start_time_4" required value="13:00">
+                            </div>
+                            <div class="form-group">
+                                <label>End Time <span class="required">*</span></label>
+                                <input type="time" name="end_time_4" required value="14:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📚 Period 5</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Subject <span class="required">*</span></label>
+                                <input type="text" name="subject_5" required placeholder="e.g., Biology">
+                            </div>
+                            <div class="form-group">
+                                <label>Start Time <span class="required">*</span></label>
+                                <input type="time" name="start_time_5" required value="14:00">
+                            </div>
+                            <div class="form-group">
+                                <label>End Time <span class="required">*</span></label>
+                                <input type="time" name="end_time_5" required value="15:00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" style="font-size: 16px; padding: 12px 30px;">
+                        ⚡ Add All 5 Periods
+                    </button>
+                </form>
+            </div>
+
+            <!-- Single Entry Form (Hidden by default) -->
+            <div id="singleForm" class="form-container" style="display: none;">
+                <h2>➕ Add Single Timetable Entry</h2>
+                <form method="POST" action="{{ url_for('manage_timetable') }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Class <span class="required">*</span></label>
+                            <input type="text" name="class_name" required placeholder="e.g., Class A, 10th Grade">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Day of Week <span class="required">*</span></label>
+                            <select name="day_of_week" required>
+                                <option value="">Select Day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Period <span class="required">*</span></label>
+                            <select name="period" required>
+                                <option value="">Select Period</option>
+                                <option value="1">Period 1</option>
+                                <option value="2">Period 2</option>
+                                <option value="3">Period 3</option>
+                                <option value="4">Period 4</option>
+                                <option value="5">Period 5</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" name="subject" placeholder="e.g., Mathematics, Physics">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Start Time</label>
+                            <input type="time" name="start_time">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>End Time</label>
+                            <input type="time" name="end_time">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Entry</button>
+                </form>
+            </div>
         </div>
+
+        <script>
+            function switchMode(mode) {
+                const bulkForm = document.getElementById('bulkForm');
+                const singleForm = document.getElementById('singleForm');
+                const buttons = document.querySelectorAll('.mode-btn');
+                
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                if (mode === 'bulk') {
+                    bulkForm.style.display = 'block';
+                    singleForm.style.display = 'none';
+                    buttons[0].classList.add('active');
+                } else {
+                    bulkForm.style.display = 'none';
+                    singleForm.style.display = 'block';
+                    buttons[1].classList.add('active');
+                }
+            }
+        </script>
         
         <!-- Timetable List -->
         <div class="card">

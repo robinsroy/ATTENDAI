@@ -24,7 +24,7 @@
         }
         
         .header-content {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -60,7 +60,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 40px auto;
             padding: 0 20px;
         }
@@ -85,6 +85,126 @@
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        .today-schedule-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .today-schedule-card h2 {
+            color: white;
+            margin-bottom: 5px;
+        }
+        
+        .today-periods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .period-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .period-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        
+        .period-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .period-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+        
+        .period-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .period-subject {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .period-status {
+            margin-top: 12px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .status-indicator.present {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-indicator.absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-indicator.not-taken {
+            background: #fff3cd;
+            color: #856404;
         }
         
         .profile-card {
@@ -125,6 +245,104 @@
             font-size: 16px;
             color: #333;
             font-weight: 500;
+        }
+        
+        .timetable-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .timetable-card h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .timetable-grid {
+            overflow-x: auto;
+        }
+        
+        .timetable-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        .timetable-table th,
+        .timetable-table td {
+            padding: 15px 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        
+        .timetable-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .timetable-table th.day-header {
+            background: #764ba2;
+        }
+        
+        .period-cell {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-height: 80px;
+        }
+        
+        .period-cell:hover {
+            background: #f8f9fa;
+            transform: scale(1.02);
+        }
+        
+        .period-cell.today {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+        }
+        
+        .period-cell .subject {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .period-cell .time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .attendance-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .attendance-status.present {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .attendance-status.absent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .attendance-status.not-taken {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .empty-cell {
+            background: #f8f9fa;
+            color: #999;
         }
         
         .attendance-card {
@@ -180,6 +398,11 @@
             color: #721c24;
         }
         
+        .status-badge.not-taken {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 40px;
@@ -205,6 +428,7 @@
             cursor: pointer;
             transition: transform 0.2s;
             font-size: 14px;
+            display: inline-block;
         }
         
         .btn:hover {
@@ -219,6 +443,83 @@
         .btn-secondary {
             background: #6c757d;
             color: white;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #333;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            color: #666;
+        }
+        
+        .modal-info {
+            margin-bottom: 15px;
+        }
+        
+        .modal-info label {
+            font-weight: bold;
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -246,6 +547,97 @@
             {% endif %}
         {% endwith %}
         
+        <!-- Statistics Row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value">{{ attendance_percentage }}%</div>
+                <div class="stat-label">Attendance Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ present_count }}</div>
+                <div class="stat-label">Days Present</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ total_records }}</div>
+                <div class="stat-label">Total Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ student.class_name or 'N/A' }}</div>
+                <div class="stat-label">Class</div>
+            </div>
+        </div>
+        
+        <!-- TODAY'S SCHEDULE - Prominent Section -->
+        {% if timetable_grid and today_day in timetable_grid %}
+        <div class="today-schedule-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h2>📅 TODAY'S SCHEDULE</h2>
+                    <p style="color: #666; margin-top: 5px;">
+                        {{ today_day }}, {{ today_date }}
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">
+                        {% set today_periods = [] %}
+                        {% for period in sorted_periods %}
+                            {% if period in timetable_grid[today_day] %}
+                                {% set _ = today_periods.append(period) %}
+                            {% endif %}
+                        {% endfor %}
+                        {{ today_periods|length }} Periods
+                    </div>
+                    <div style="font-size: 12px; color: #999;">Classes Today</div>
+                </div>
+            </div>
+            
+            <div class="today-periods-grid">
+                {% for period in sorted_periods %}
+                    {% if period in timetable_grid[today_day] %}
+                    {% set entry = timetable_grid[today_day][period] %}
+                    {% set attendance_status = today_attendance[period] if period in today_attendance else "Not Taken" %}
+                    <div class="period-card" onclick="showPeriodDetails('{{ today_day }}', '{{ period }}', '{{ entry.subject }}', '{{ entry.start_time }}', '{{ entry.end_time }}', '{{ attendance_status }}')">
+                        <div class="period-header">
+                            <div class="period-number">Period {{ period }}</div>
+                            <div class="period-time">{{ entry.start_time }} - {{ entry.end_time }}</div>
+                        </div>
+                        <div class="period-subject">📚 {{ entry.subject }}</div>
+                        <div class="period-status">
+                            {% if period in today_attendance %}
+                                {% if today_attendance[period] == 'Present' %}
+                                    <span class="status-indicator present">
+                                        <span style="font-size: 16px;">✅</span> PRESENT
+                                    </span>
+                                {% else %}
+                                    <span class="status-indicator absent">
+                                        <span style="font-size: 16px;">❌</span> ABSENT
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="status-indicator not-taken">
+                                    <span style="font-size: 16px;">⏳</span> NOT TAKEN
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="today-schedule-card">
+            <h2>📅 TODAY'S SCHEDULE</h2>
+            <p style="color: #666; margin-top: 5px; margin-bottom: 20px;">
+                {{ today_day }}, {{ today_date }}
+            </p>
+            <div class="empty-state" style="padding: 30px;">
+                <div class="empty-state-icon">📅</div>
+                <p>No classes scheduled for today.</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Profile Card -->
         <div class="profile-card">
             <h2>📋 My Profile</h2>
             <div class="profile-info">
@@ -271,8 +663,98 @@
             </div>
         </div>
         
+        <!-- Timetable Card -->
+        {% if timetable_grid %}
+        <div class="timetable-card">
+            <h2>📅 My Class Timetable - {{ student.class_name }}</h2>
+            <p style="color: #666; margin-bottom: 15px;">
+                Today is <strong>{{ today_day }}</strong>, {{ today_date }}. 
+                Click on any period to see details.
+            </p>
+            
+            <div class="timetable-grid">
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th class="day-header">Day / Period</th>
+                            {% for period in sorted_periods %}
+                            <th>{{ period }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in days_order %}
+                        <tr>
+                            <th class="day-header">{{ day }}</th>
+                            {% for period in sorted_periods %}
+                            {% set cell_subject = timetable_grid[day][period].subject if day in timetable_grid and period in timetable_grid[day] else "" %}
+                            {% set cell_start = timetable_grid[day][period].start_time if day in timetable_grid and period in timetable_grid[day] else "" %}
+                            {% set cell_end = timetable_grid[day][period].end_time if day in timetable_grid and period in timetable_grid[day] else "" %}
+                            {% set cell_status = today_attendance[period] if day == today_day and period in today_attendance else "Not Taken" %}
+                            <td class="period-cell {% if day == today_day %}today{% endif %}" 
+                                onclick="showPeriodDetails('{{ day }}', '{{ period }}', '{{ cell_subject }}', '{{ cell_start }}', '{{ cell_end }}', '{{ cell_status }}')">
+                                {% if day in timetable_grid and period in timetable_grid[day] %}
+                                    <div class="subject">{{ timetable_grid[day][period].subject }}</div>
+                                    <div class="time">
+                                        {{ timetable_grid[day][period].start_time }} - {{ timetable_grid[day][period].end_time }}
+                                    </div>
+                                    {% if day == today_day %}
+                                        {% if period in today_attendance %}
+                                            <span class="attendance-status {{ 'present' if today_attendance[period] == 'Present' else 'absent' }}">
+                                                {{ today_attendance[period] }}
+                                            </span>
+                                        {% else %}
+                                            <span class="attendance-status not-taken">Not Taken</span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% else %}
+                                    <div class="empty-cell">-</div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #d4edda; border: 1px solid #c3e6cb;"></div>
+                    <span>Present</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #f8d7da; border: 1px solid #f5c6cb;"></div>
+                    <span>Absent</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #e2e3e5; border: 1px solid #d6d8db;"></div>
+                    <span>Not Taken</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #fff3cd; border: 2px solid #ffc107;"></div>
+                    <span>Today's Classes</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            {% if student.class_name %}
+            <div class="timetable-card">
+                <h2>� My Class Timetable</h2>
+                <div class="empty-state">
+                    <div class="empty-state-icon">📅</div>
+                    <p>No timetable has been created for your class ({{ student.class_name }}) yet.</p>
+                    <p style="font-size: 14px; color: #999; margin-top: 10px;">
+                        Please contact your teacher to add the timetable.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+        
+        <!-- Attendance History Card -->
         <div class="attendance-card">
-            <h2>📊 My Attendance Records</h2>
+            <h2>📊 My Attendance History</h2>
             
             {% if attendance_records %}
                 <table class="attendance-table">
@@ -284,7 +766,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for record in attendance_records %}
+                        {% for record in attendance_records[:20] %}
                         <tr>
                             <td>{{ record.date }}</td>
                             <td>{{ record.period }}</td>
@@ -297,6 +779,11 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% if attendance_records|length > 20 %}
+                <p style="text-align: center; margin-top: 15px; color: #666; font-size: 13px;">
+                    Showing latest 20 records out of {{ attendance_records|length }} total
+                </p>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <div class="empty-state-icon">📭</div>
@@ -308,5 +795,76 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Period Details Modal -->
+    <div id="periodModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📚 Period Details</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info">
+                    <label>Day:</label>
+                    <span id="modalDay"></span>
+                </div>
+                <div class="modal-info">
+                    <label>Period:</label>
+                    <span id="modalPeriod"></span>
+                </div>
+                <div class="modal-info">
+                    <label>Subject:</label>
+                    <span id="modalSubject"></span>
+                </div>
+                <div class="modal-info">
+                    <label>Time:</label>
+                    <span id="modalTime"></span>
+                </div>
+                <div class="modal-info">
+                    <label>Attendance Status:</label>
+                    <span id="modalStatus"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showPeriodDetails(day, period, subject, startTime, endTime, status) {
+            if (!subject) {
+                return; // Don't show modal for empty cells
+            }
+            
+            document.getElementById('modalDay').textContent = day;
+            document.getElementById('modalPeriod').textContent = period;
+            document.getElementById('modalSubject').textContent = subject || 'Not specified';
+            document.getElementById('modalTime').textContent = startTime && endTime ? `${startTime} - ${endTime}` : 'Not specified';
+            
+            const statusSpan = document.getElementById('modalStatus');
+            statusSpan.textContent = status;
+            statusSpan.className = 'status-badge'; // Changed from 'attendance-status'
+            
+            if (status === 'Present') {
+                statusSpan.classList.add('present');
+            } else if (status === 'Absent') {
+                statusSpan.classList.add('absent');
+            } else {
+                statusSpan.classList.add('not-taken');
+            }
+            
+            document.getElementById('periodModal').style.display = 'block';
+        }
+        
+        function closeModal() {
+            document.getElementById('periodModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('periodModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
