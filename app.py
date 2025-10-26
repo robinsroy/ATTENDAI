@@ -53,6 +53,8 @@ def index():
             return redirect(url_for('teacher_dashboard'))
         elif current_user.role == 'student':
             return redirect(url_for('student_dashboard'))
+        elif current_user.role == 'admin':
+            return redirect(url_for('admin_dashboard'))
     return redirect(url_for('login'))
 
 # Main login page (shows options for teacher/student)
@@ -111,21 +113,32 @@ def teacher_register():
 
 @app.route('/teacher/login', methods=['GET', 'POST'])
 def teacher_login():
-    if current_user.is_authenticated and current_user.role == 'teacher':
-        return redirect(url_for('teacher_dashboard'))
+    if current_user.is_authenticated:
+        if current_user.role == 'teacher':
+            return redirect(url_for('teacher_dashboard'))
+        elif current_user.role == 'admin':
+            return redirect(url_for('admin_dashboard'))
     
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
         db = SessionLocal()
-        user = db.query(User).filter(User.username == username, User.role == 'teacher').first()
+        # Allow both teacher and admin login through this page
+        user = db.query(User).filter(
+            User.username == username,
+            User.role.in_(['teacher', 'admin'])
+        ).first()
         db.close()
         
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
             flash('Login successful!', 'success')
-            return redirect(url_for('teacher_dashboard'))
+            # Redirect based on role
+            if user.role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('teacher_dashboard'))
         else:
             flash('Invalid username or password!', 'error')
     
@@ -446,8 +459,8 @@ def register_student():
 @login_required
 def view_students():
     """View all registered students"""
-    if current_user.role != 'teacher':
-        flash('Access denied! Teachers only.', 'error')
+    if current_user.role not in ['teacher', 'admin']:
+        flash('Access denied! Teachers and admins only.', 'error')
         return redirect(url_for('login'))
     
     db = SessionLocal()
@@ -808,6 +821,213 @@ def edit_timetable(id):
     
     db.close()
     return render_template('edit_timetable.html', entry=entry)
+
+#########################
+# ADMIN ROUTES
+#########################
+
+@app.route('/admin/dashboard')
+@login_required
+def admin_dashboard():
+    """Admin dashboard - user management and system overview"""
+    if current_user.role != 'admin':
+        flash('Access denied! Admins only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    # Get statistics
+    total_teachers = db.query(User).filter(User.role == 'teacher').count()
+    total_students = db.query(Student).count()
+    total_classes = db.query(Student.class_name).distinct().count()
+    total_attendance = db.query(Attendance).count()
+    
+    # Get recent users (last 10)
+    recent_teachers = db.query(User).filter(User.role == 'teacher').order_by(User.id.desc()).limit(5).all()
+    recent_students = db.query(Student).order_by(Student.id.desc()).limit(5).all()
+    
+    db.close()
+    
+    return render_template('admin_dashboard.html',
+                         total_teachers=total_teachers,
+                         total_students=total_students,
+                         total_classes=total_classes,
+                         total_attendance=total_attendance,
+                         recent_teachers=recent_teachers,
+                         recent_students=recent_students)
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    """View and manage all users (teachers and students)"""
+    if current_user.role != 'admin':
+        flash('Access denied! Admins only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    # Get all teachers
+    teachers = db.query(User).filter(User.role == 'teacher').all()
+    
+    # Get all students with their user accounts
+    students = db.query(Student).all()
+    
+    db.close()
+    
+    return render_template('admin_users.html', teachers=teachers, students=students)
+
+@app.route('/admin/users/delete/<user_type>/<int:user_id>', methods=['POST'])
+@login_required
+def admin_delete_user(user_type, user_id):
+    """Delete a user (teacher or student)"""
+    if current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = SessionLocal()
+    
+    try:
+        if user_type == 'teacher':
+            user = db.query(User).filter(User.id == user_id, User.role == 'teacher').first()
+            if user:
+                db.delete(user)
+                db.commit()
+                flash(f'Teacher {user.username} deleted successfully!', 'success')
+            else:
+                flash('Teacher not found!', 'error')
+                
+        elif user_type == 'student':
+            student = db.query(Student).filter(Student.id == user_id).first()
+            if student:
+                # Delete associated user account if exists
+                if student.user_account:
+                    db.delete(student.user_account)
+                # Delete attendance records
+                db.query(Attendance).filter(Attendance.student_id == user_id).delete()
+                # Delete student
+                db.delete(student)
+                db.commit()
+                flash(f'Student {student.name} deleted successfully!', 'success')
+            else:
+                flash('Student not found!', 'error')
+        
+        db.close()
+        
+    except Exception as e:
+        db.rollback()
+        db.close()
+        flash(f'Error deleting user: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/analytics')
+@login_required
+def admin_analytics():
+    """Admin analytics - dedicated admin analytics page"""
+    if current_user.role != 'admin':
+        flash('Access denied! Admins only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    # Get all teachers
+    total_teachers = db.query(User).filter(User.role == 'teacher').count()
+    
+    # Get all students
+    students = db.query(Student).all()
+    
+    # Get all attendance records
+    attendance_records = db.query(Attendance).all()
+    
+    # Calculate statistics
+    total_students = len(students)
+    enrolled_students = len([s for s in students if s.encodings_path])
+    pending_students = total_students - enrolled_students
+    
+    # Get unique classes
+    classes = list(set([s.class_name for s in students if s.class_name]))
+    
+    # Calculate period-wise statistics
+    from collections import defaultdict
+    period_stats = defaultdict(lambda: {'total': 0, 'present': 0, 'absent': 0})
+    for record in attendance_records:
+        period = record.period
+        period_stats[period]['total'] += 1
+        if record.status.lower() == 'present':
+            period_stats[period]['present'] += 1
+        else:
+            period_stats[period]['absent'] += 1
+    
+    # Calculate student-wise statistics
+    student_stats = []
+    for student in students:
+        student_records = [r for r in attendance_records if r.student_id == student.id]
+        total_records = len(student_records)
+        present_count = len([r for r in student_records if r.status.lower() == 'present'])
+        absent_count = total_records - present_count
+        attendance_percentage = (present_count / total_records * 100) if total_records > 0 else 0
+        
+        student_stats.append({
+            'id': student.id,
+            'name': student.name,
+            'roll_no': student.roll_no,
+            'class_name': student.class_name or '-',
+            'total_records': total_records,
+            'present': present_count,
+            'absent': absent_count,
+            'percentage': round(attendance_percentage, 2)
+        })
+    
+    # Sort by percentage (descending)
+    student_stats.sort(key=lambda x: x['percentage'], reverse=True)
+    
+    # Class-wise statistics
+    class_stats = defaultdict(lambda: {'students': 0, 'total_records': 0, 'present': 0, 'absent': 0})
+    for student in students:
+        class_name = student.class_name or 'No Class'
+        class_stats[class_name]['students'] += 1
+        student_records = [r for r in attendance_records if r.student_id == student.id]
+        class_stats[class_name]['total_records'] += len(student_records)
+        class_stats[class_name]['present'] += len([r for r in student_records if r.status.lower() == 'present'])
+        class_stats[class_name]['absent'] += len([r for r in student_records if r.status.lower() == 'absent'])
+    
+    # Calculate overall statistics
+    total_attendance_records = len(attendance_records)
+    total_present = len([r for r in attendance_records if r.status.lower() == 'present'])
+    total_absent = total_attendance_records - total_present
+    overall_percentage = (total_present / total_attendance_records * 100) if total_attendance_records > 0 else 0
+    
+    # Prepare chart data (arrays for Chart.js)
+    class_names = sorted(list(class_stats.keys()))
+    class_present_data = [class_stats[c]['present'] for c in class_names]
+    class_absent_data = [class_stats[c]['absent'] for c in class_names]
+    
+    period_names = sorted(list(period_stats.keys()))
+    period_present_data = [period_stats[p]['present'] for p in period_names]
+    period_absent_data = [period_stats[p]['absent'] for p in period_names]
+    
+    db.close()
+    
+    return render_template('admin_analytics.html',
+                         total_teachers=total_teachers,
+                         total_students=total_students,
+                         enrolled_students=enrolled_students,
+                         pending_students=pending_students,
+                         classes=classes,
+                         total_records=total_attendance_records,
+                         total_attendance_records=total_attendance_records,
+                         total_present=total_present,
+                         total_absent=total_absent,
+                         overall_percentage=round(overall_percentage, 1),
+                         student_stats=student_stats,
+                         class_stats=dict(class_stats),
+                         period_stats=dict(period_stats),
+                         class_names=class_names,
+                         class_present_data=class_present_data,
+                         class_absent_data=class_absent_data,
+                         period_names=period_names,
+                         period_present_data=period_present_data,
+                         period_absent_data=period_absent_data,
+                         is_admin=True)
 
 #########################
 # STUDENT ROUTES
