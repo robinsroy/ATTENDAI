@@ -553,7 +553,7 @@ def student_dashboard():
         all_periods.add(entry.period)
     
     # Sort periods (Period 1, Period 2, etc.)
-    sorted_periods = sorted(list(all_periods), key=lambda x: int(x.split()[-1]) if x.split()[-1].isdigit() else 0)
+    sorted_periods = sorted(list(all_periods), key=lambda x: int(x) if x.isdigit() else (int(x.split()[-1]) if x.split()[-1].isdigit() else 0))
     
     # Get today's date and day
     from datetime import datetime
@@ -562,10 +562,13 @@ def student_dashboard():
     today_day = today.strftime('%A')
     
     # Create attendance lookup: {period: status} for today
+    # Handle both "1" and "Period 1" format
     today_attendance = {}
     for record in attendance_records:
         if record.date == today_date:
-            today_attendance[record.period] = record.status
+            # Store with period number only (normalize)
+            period_num = record.period.split()[-1] if ' ' in record.period else record.period
+            today_attendance[period_num] = record.status
     
     # Calculate attendance statistics
     total_records = len(attendance_records)

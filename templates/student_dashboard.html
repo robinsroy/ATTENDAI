@@ -604,7 +604,7 @@
                         <div class="period-subject">📚 {{ entry.subject }}</div>
                         <div class="period-status">
                             {% if period in today_attendance %}
-                                {% if today_attendance[period] == 'Present' %}
+                                {% if today_attendance[period]|lower == 'present' %}
                                     <span class="status-indicator present">
                                         <span style="font-size: 16px;">✅</span> PRESENT
                                     </span>
