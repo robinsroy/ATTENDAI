@@ -21,6 +21,13 @@ class User(UserMixin, Base):
     email = Column(String, nullable=True)
     student_id = Column(Integer, ForeignKey('students.id'), nullable=True)  # Link to student record if role is student
     
+    # Teacher profile fields
+    full_name = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    profile_photo = Column(String, nullable=True)
+    department = Column(String, nullable=True)
+    subject = Column(String, nullable=True)
+    
     # Relationship
     student = relationship("Student", back_populates="user", foreign_keys=[student_id])
     

@@ -140,6 +140,90 @@ def teacher_dashboard():
     
     return render_template('teacher_dashboard.html', user=current_user)
 
+@app.route('/teacher/settings', methods=['GET', 'POST'])
+@login_required
+def teacher_settings():
+    """Teacher settings page - profile, preferences, password change"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    teacher = db.query(User).get(current_user.id)
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'update_profile':
+            # Update profile information
+            teacher.full_name = request.form.get('full_name')
+            teacher.email = request.form.get('email')
+            teacher.phone = request.form.get('phone')
+            teacher.department = request.form.get('department')
+            teacher.subject = request.form.get('subject')
+            
+            db.commit()
+            flash('Profile updated successfully!', 'success')
+        
+        elif action == 'upload_photo':
+            if 'profile_photo' not in request.files:
+                flash('No file uploaded!', 'error')
+            else:
+                file = request.files['profile_photo']
+                if file.filename == '':
+                    flash('No file selected!', 'error')
+                elif file:
+                    # Save profile photo
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    # Create uploads directory if not exists
+                    upload_folder = os.path.join('static', 'uploads', 'teachers')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    # Save with teacher username as filename
+                    ext = os.path.splitext(file.filename)[1]
+                    filename = f"{teacher.username}{ext}"
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    
+                    # Update teacher record
+                    teacher.profile_photo = f"uploads/teachers/{filename}"
+                    db.commit()
+                    flash('Profile photo updated successfully!', 'success')
+        
+        elif action == 'change_password':
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            # Validation
+            if not current_password or not new_password or not confirm_password:
+                flash('All password fields are required!', 'error')
+            elif new_password != confirm_password:
+                flash('New passwords do not match!', 'error')
+            elif not check_password_hash(teacher.password_hash, current_password):
+                flash('Current password is incorrect!', 'error')
+            else:
+                # Update password
+                teacher.password_hash = generate_password_hash(new_password)
+                db.commit()
+                flash('Password changed successfully!', 'success')
+    
+    # Get statistics for dashboard
+    total_students = db.query(Student).count()
+    total_attendance = db.query(Attendance).count()
+    total_classes = len(set([s.class_name for s in db.query(Student).all() if s.class_name]))
+    
+    db.close()
+    
+    return render_template('teacher_settings.html',
+                         user=current_user,
+                         teacher=teacher,
+                         total_students=total_students,
+                         total_attendance=total_attendance,
+                         total_classes=total_classes)
+
 @app.route('/reports/analytics')
 @login_required
 def reports_analytics():
@@ -205,7 +289,7 @@ def reports_analytics():
         student_records = [r for r in attendance_records if r.student_id == student.id]
         class_stats[class_name]['total_records'] += len(student_records)
         class_stats[class_name]['present'] += len([r for r in student_records if r.status.lower() == 'present'])
-        class_stats[class_name]['absent'] += len(student_records) - class_stats[class_name]['present']
+        class_stats[class_name]['absent'] += len([r for r in student_records if r.status.lower() == 'absent'])
     
     # Calculate overall statistics
     total_attendance_records = len(attendance_records)
@@ -820,13 +904,44 @@ def student_dashboard():
     # Calculate overall attendance percentage based on unique days
     attendance_percentage = round((days_present / unique_dates * 100), 1) if unique_dates > 0 else 0.0
     
+    # Load student data before closing session to avoid DetachedInstanceError
+    student_data = {
+        'id': student.id,
+        'name': student.name,
+        'roll_no': student.roll_no,
+        'class_name': student.class_name,
+        'email': student.email,
+        'profile_photo': student.profile_photo,
+        'encodings_path': student.encodings_path
+    }
+    
+    # Convert timetable entries to dict to avoid DetachedInstanceError
+    timetable_dict = {}
+    for day, periods in timetable_grid.items():
+        timetable_dict[day] = {}
+        for period, entry in periods.items():
+            timetable_dict[day][period] = {
+                'subject': entry.subject,
+                'start_time': entry.start_time,
+                'end_time': entry.end_time,
+                'day_of_week': entry.day_of_week,
+                'period': entry.period
+            }
+    
+    # Convert attendance records to list of dicts
+    attendance_list = [{
+        'date': r.date,
+        'period': r.period,
+        'status': r.status
+    } for r in attendance_records]
+    
     db.close()
     
     return render_template('student_dashboard.html', 
                          user=current_user, 
-                         student=student,
-                         attendance_records=attendance_records,
-                         timetable_grid=timetable_grid,
+                         student=student_data,
+                         attendance_records=attendance_list,
+                         timetable_grid=timetable_dict,
                          days_order=days_order,
                          sorted_periods=sorted_periods,
                          today_day=today_day,
@@ -950,11 +1065,22 @@ def student_profile():
     total_records = len(attendance_records)
     attendance_percentage = round((days_present / unique_dates * 100), 1) if unique_dates > 0 else 0.0
     
+    # Load student data before closing session to avoid DetachedInstanceError
+    student_data = {
+        'id': student.id,
+        'name': student.name,
+        'roll_no': student.roll_no,
+        'class_name': student.class_name,
+        'email': student.email,
+        'profile_photo': student.profile_photo,
+        'encodings_path': student.encodings_path
+    }
+    
     db.close()
     
     return render_template('student_profile.html',
                          user=current_user,
-                         student=student,
+                         student=student_data,
                          total_records=total_records,
                          present_count=days_present,
                          absent_count=days_absent,
