@@ -21,6 +21,29 @@
             padding: 20px;
         }
         
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 25px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .home-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
         .container {
             background: white;
             padding: 40px;
@@ -124,6 +147,12 @@
             text-decoration: underline;
         }
         
+        @media (max-width: 600px) {
+            .role-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+        
         .flash-messages {
             margin-bottom: 20px;
         }
@@ -148,8 +177,13 @@
     </style>
 </head>
 <body>
+    <!-- Home Button -->
+    <a href="{{ url_for('index') }}" class="home-btn">
+        🏠 Home
+    </a>
+    
     <div class="container">
-        <h1>🎓 Attendance System</h1>
+        <h1>🎓 AttendAI Login</h1>
         <p class="subtitle">AI-Powered Face Recognition Attendance</p>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -180,8 +214,7 @@
         
         <div class="info-links">
             <p>
-                <a href="{{ url_for('teacher_register') }}">Register as Teacher</a> |
-                <a href="{{ url_for('check_db') }}">Database Status</a>
+                <a href="{{ url_for('teacher_register') }}">Register as Teacher</a>
             </p>
         </div>
     </div>

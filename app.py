@@ -48,6 +48,12 @@ def load_user(user_id):
 # Home route - redirect to login
 @app.route('/')
 def index():
+    """Home page - show landing page"""
+    return render_template('home.html')
+
+@app.route('/dashboard')
+def dashboard():
+    """Redirect authenticated users to their respective dashboards"""
     if current_user.is_authenticated:
         if current_user.role == 'teacher':
             return redirect(url_for('teacher_dashboard'))
@@ -61,7 +67,7 @@ def index():
 @app.route('/login')
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     return render_template('login.html')
 
 #########################
