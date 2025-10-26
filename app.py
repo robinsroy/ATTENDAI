@@ -1029,6 +1029,192 @@ def admin_analytics():
                          period_absent_data=period_absent_data,
                          is_admin=True)
 
+@app.route('/admin/download_comprehensive_report')
+@login_required
+def admin_download_comprehensive_report():
+    """Download comprehensive admin analytics report as CSV"""
+    print("📥 Admin comprehensive report download requested")
+    print(f"👤 Current user: {current_user.username}, Role: {current_user.role}")
+    
+    if current_user.role != 'admin':
+        print("❌ Access denied - not admin")
+        flash('Access denied! Admins only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    try:
+        print("✅ Database session created")
+        
+        # Get all students
+        students = db.query(Student).order_by(Student.class_name, Student.roll_no).all()
+        print(f"📊 Found {len(students)} students")
+        
+        # Get all teachers
+        teachers = db.query(User).filter(User.role == 'teacher').all()
+        print(f"👨‍🏫 Found {len(teachers)} teachers")
+        
+        # Get all unique periods taken
+        all_periods = db.query(Attendance.period).distinct().order_by(Attendance.period).all()
+        periods_taken = [str(p[0]) for p in all_periods]
+        print(f"📅 Found {len(periods_taken)} unique periods")
+        
+        # Get all unique dates
+        all_dates = db.query(Attendance.date).distinct().order_by(Attendance.date).all()
+        dates_taken = [d[0] for d in all_dates]
+        print(f"📆 Found {len(dates_taken)} unique dates")
+        
+        # Create CSV in memory
+        si = StringIO()
+        writer = csv.writer(si)
+        
+        print("📝 Writing CSV sections...")
+        
+        # Write system overview header
+        writer.writerow(['=== ATTENDAI SYSTEM - COMPREHENSIVE ANALYTICS REPORT ==='])
+        writer.writerow(['Generated On:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        writer.writerow([])
+        
+        # Write teachers section
+        writer.writerow(['=== TEACHERS IN SYSTEM ==='])
+        writer.writerow(['ID', 'Username', 'Full Name', 'Email', 'Department', 'Subject', 'Phone'])
+        for teacher in teachers:
+            writer.writerow([
+                teacher.id,
+                teacher.username,
+                teacher.full_name or '-',
+                teacher.email or '-',
+                teacher.department or '-',
+                teacher.subject or '-',
+                teacher.phone or '-'
+            ])
+        writer.writerow([])
+        
+        # Write periods overview
+        writer.writerow(['=== PERIODS TAKEN TILL NOW ==='])
+        writer.writerow(['Total Unique Periods:', len(periods_taken)])
+        writer.writerow(['Periods:', ', '.join(periods_taken) if periods_taken else 'None'])
+        writer.writerow(['Total Days Covered:', len(dates_taken)])
+        writer.writerow([])
+        
+        # Write student-wise comprehensive data
+        writer.writerow(['=== STUDENT-WISE ATTENDANCE DETAILS ==='])
+        writer.writerow([
+            'Roll No',
+            'Student Name',
+            'Class',
+            'Email',
+            'Face Enrolled',
+            'Total Classes Held',
+            'Present Count',
+            'Absent Count',
+            'Attendance %'
+        ])
+        
+        total_students = 0
+        total_present_all = 0
+        total_absent_all = 0
+        
+        for student in students:
+            total_students += 1
+            
+            # Get all attendance records for this student
+            student_attendance = db.query(Attendance).filter(
+                Attendance.student_id == student.id
+            ).all()
+            
+            # Count present and absent
+            present_count = sum(1 for a in student_attendance if a.status.lower() == 'present')
+            absent_count = sum(1 for a in student_attendance if a.status.lower() == 'absent')
+            total_classes = present_count + absent_count
+            
+            # Calculate percentage
+            if total_classes > 0:
+                attendance_percentage = round((present_count / total_classes) * 100, 2)
+            else:
+                attendance_percentage = 0.0
+            
+            total_present_all += present_count
+            total_absent_all += absent_count
+            
+            # Enrollment status
+            enrollment_status = 'Yes' if student.encodings_path else 'No'
+            
+            writer.writerow([
+                student.roll_no,
+                student.name,
+                student.class_name or '-',
+                student.email or '-',
+                enrollment_status,
+                total_classes,
+                present_count,
+                absent_count,
+                f'{attendance_percentage}%'
+            ])
+        
+        writer.writerow([])
+        
+        # Write summary statistics
+        writer.writerow(['=== OVERALL SYSTEM STATISTICS ==='])
+        writer.writerow(['Total Students:', total_students])
+        writer.writerow(['Total Teachers:', len(teachers)])
+        writer.writerow(['Total Periods Taken:', len(periods_taken)])
+        writer.writerow(['Total Days Covered:', len(dates_taken)])
+        writer.writerow(['Total Present Records:', total_present_all])
+        writer.writerow(['Total Absent Records:', total_absent_all])
+        total_records = total_present_all + total_absent_all
+        if total_records > 0:
+            overall_percentage = round((total_present_all / total_records) * 100, 2)
+            writer.writerow(['Overall Attendance %:', f'{overall_percentage}%'])
+        writer.writerow([])
+        
+        # Write detailed attendance records
+        writer.writerow(['=== DETAILED ATTENDANCE RECORDS ==='])
+        writer.writerow(['Date', 'Period', 'Roll No', 'Student Name', 'Class', 'Status'])
+        
+        # Get all attendance records ordered by date and period
+        all_attendance = db.query(Attendance).order_by(
+            Attendance.date.desc(), 
+            Attendance.period
+        ).all()
+        
+        for record in all_attendance:
+            student = db.query(Student).filter_by(id=record.student_id).first()
+            if student:
+                # Handle date - might be string or date object
+                date_str = record.date if isinstance(record.date, str) else record.date.strftime('%Y-%m-%d')
+                
+                writer.writerow([
+                    date_str,
+                    str(record.period),
+                    student.roll_no,
+                    student.name,
+                    student.class_name or '-',
+                    record.status
+                ])
+        
+        print(f"📄 CSV content generated ({len(si.getvalue())} bytes)")
+        
+    except Exception as e:
+        print(f"❌ ERROR in admin_download_comprehensive_report: {str(e)}")
+        print(f"❌ Exception type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        db.close()
+        flash(f'Error generating report: {str(e)}', 'error')
+        return redirect(url_for('admin_analytics'))
+    
+    db.close()
+    print("✅ Database closed")
+    
+    # Create response
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=admin_comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    output.headers["Content-type"] = "text/csv"
+    
+    print("✅ Response created, sending file...")
+    return output
+
 #########################
 # STUDENT ROUTES
 #########################
