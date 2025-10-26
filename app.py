@@ -220,6 +220,53 @@ def view_students():
     
     return render_template('view_students.html', students=students)
 
+@app.route('/students/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_student(id):
+    """Delete a student and all associated data"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    try:
+        # Find the student
+        student = db.query(Student).filter_by(id=id).first()
+        if not student:
+            flash('Student not found!', 'error')
+            return redirect(url_for('view_students'))
+        
+        student_name = student.name
+        roll_no = student.roll_no
+        
+        # Delete face encodings file if it exists
+        if student.encodings_path and os.path.exists(student.encodings_path):
+            try:
+                os.remove(student.encodings_path)
+            except Exception as e:
+                print(f"Error deleting encodings file: {e}")
+        
+        # Delete associated user account
+        user = db.query(User).filter_by(username=student.roll_no).first()
+        if user:
+            db.delete(user)
+        
+        # Delete all attendance records for this student
+        db.query(Attendance).filter_by(student_id=id).delete()
+        
+        # Delete the student record
+        db.delete(student)
+        db.commit()
+        
+        flash(f'✅ Student {student_name} (Roll: {roll_no}) has been deleted successfully!', 'success')
+    except Exception as e:
+        db.rollback()
+        flash(f'❌ Error deleting student: {str(e)}', 'error')
+    finally:
+        db.close()
+    
+    return redirect(url_for('view_students'))
+
 @app.route('/students/register-with-face', methods=['GET', 'POST'])
 @login_required
 def register_student_with_face():
@@ -229,7 +276,24 @@ def register_student_with_face():
         return redirect(url_for('login'))
     
     if request.method == 'GET':
-        return render_template('register_student_with_face.html')
+        # Check if we're completing enrollment for an existing student
+        student_id = request.args.get('student_id')
+        student_data = None
+        
+        if student_id:
+            db = SessionLocal()
+            student = db.query(Student).filter_by(id=int(student_id)).first()
+            if student:
+                student_data = {
+                    'id': student.id,
+                    'name': student.name,
+                    'roll_no': student.roll_no,
+                    'class_name': student.class_name,
+                    'email': student.email
+                }
+            db.close()
+        
+        return render_template('register_student_with_face.html', student=student_data)
     
     # POST - Handle enrollment with face data
     return render_template('register_student_with_face.html')
@@ -243,6 +307,7 @@ def enroll_student_with_face():
     
     try:
         # Get form data
+        student_id = request.form.get('student_id')  # For completing enrollment
         name = request.form.get('name')
         roll_no = request.form.get('roll_no')
         class_name = request.form.get('class_name')
@@ -258,33 +323,46 @@ def enroll_student_with_face():
         
         db = SessionLocal()
         
-        # Check if roll number exists
-        existing_student = db.query(Student).filter(Student.roll_no == roll_no).first()
-        if existing_student:
-            db.close()
-            return jsonify({'status': 'error', 'message': 'Roll Number already exists'})
-        
-        # Create student record
-        new_student = Student(
-            name=name,
-            roll_no=roll_no,
-            class_name=class_name,
-            email=email
-        )
-        db.add(new_student)
-        db.commit()
-        student_id = new_student.id
-        
-        # Create user account
-        student_user = User(
-            username=roll_no,
-            password_hash=generate_password_hash(roll_no),
-            role='student',
-            student_id=student_id,
-            email=email
-        )
-        db.add(student_user)
-        db.commit()
+        # Check if we're completing enrollment for existing student
+        if student_id:
+            # Completing enrollment for existing student
+            existing_student = db.query(Student).filter_by(id=int(student_id)).first()
+            if not existing_student:
+                db.close()
+                return jsonify({'status': 'error', 'message': 'Student not found'})
+            
+            student_id = existing_student.id
+            is_new_student = False
+        else:
+            # New student registration
+            # Check if roll number exists
+            existing_student = db.query(Student).filter(Student.roll_no == roll_no).first()
+            if existing_student:
+                db.close()
+                return jsonify({'status': 'error', 'message': 'Roll Number already exists'})
+            
+            # Create student record
+            new_student = Student(
+                name=name,
+                roll_no=roll_no,
+                class_name=class_name,
+                email=email
+            )
+            db.add(new_student)
+            db.commit()
+            student_id = new_student.id
+            
+            # Create user account
+            student_user = User(
+                username=roll_no,
+                password_hash=generate_password_hash(roll_no),
+                role='student',
+                student_id=student_id,
+                email=email
+            )
+            db.add(student_user)
+            db.commit()
+            is_new_student = True
         
         # Process face images and generate embeddings
         from face_utils import get_embeddings_from_image_bgr, append_embedding_for_student
@@ -325,7 +403,8 @@ def enroll_student_with_face():
                 failed_images += 1
         
         # Update student record with encodings path
-        new_student.encodings_path = f"encodings/{student_id}.npy"
+        student = db.query(Student).filter_by(id=student_id).first()
+        student.encodings_path = f"encodings/{student_id}.npy"
         db.commit()
         db.close()
         
@@ -334,9 +413,11 @@ def enroll_student_with_face():
         from face_utils import load_all_enrollments
         ENROLLED = load_all_enrollments()
         
+        success_message = f'Face enrollment completed! {successful_embeddings} face samples saved.' if not is_new_student else f'Student registered! {successful_embeddings} face samples saved.'
+        
         return jsonify({
             'status': 'success',
-            'message': f'Student registered! {successful_embeddings} face samples saved.',
+            'message': success_message,
             'student_id': student_id,
             'successful_embeddings': successful_embeddings,
             'failed_images': failed_images

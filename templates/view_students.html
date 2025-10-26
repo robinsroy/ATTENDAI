@@ -177,6 +177,129 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-enroll {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #333;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .btn-confirm {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-cancel {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-confirm:hover {
+            background: #c82333;
+        }
+        
+        .btn-cancel:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -229,7 +352,7 @@
                             <th>Class</th>
                             <th>Email</th>
                             <th>Status</th>
-                            <th>Login Credentials</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -242,14 +365,29 @@
                             <td>{{ student.email or '-' }}</td>
                             <td>
                                 {% if student.encodings_path %}
-                                    <span class="badge">Face Enrolled</span>
+                                    <span class="badge">✅ Face Enrolled</span>
                                 {% else %}
-                                    <span class="badge" style="background: #ffc107; color: #000;">Pending</span>
+                                    <span class="badge" style="background: #ffc107; color: #000;">⏳ Pending</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <small><strong>User:</strong> {{ student.roll_no }}<br>
-                                <strong>Pass:</strong> {{ student.roll_no }}</small>
+                                <div class="actions">
+                                    {% if not student.encodings_path %}
+                                    <a href="{{ url_for('register_student_with_face') }}?student_id={{ student.id }}" 
+                                       class="btn-action btn-enroll" 
+                                       title="Complete Face Enrollment">
+                                        📸 Enroll Face
+                                    </a>
+                                    {% endif %}
+                                    {% set student_id = student.id %}
+                                    {% set student_name = student.name|replace("'", "\\'") %}
+                                    {% set student_roll = student.roll_no|replace("'", "\\'") %}
+                                    <button onclick="confirmDelete({{ student_id }}, '{{ student_name }}', '{{ student_roll }}')" 
+                                            class="btn-action btn-delete" 
+                                            title="Delete Student">
+                                        🗑️ Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -265,5 +403,50 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h2>⚠️ Confirm Deletion</h2>
+            <p id="deleteMessage"></p>
+            <div class="modal-buttons">
+                <button onclick="closeDeleteModal()" class="btn-cancel">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn-confirm">Delete Student</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmDelete(studentId, studentName, rollNo) {
+            const modal = document.getElementById('deleteModal');
+            const message = document.getElementById('deleteMessage');
+            const form = document.getElementById('deleteForm');
+            
+            message.innerHTML = `Are you sure you want to delete <strong>${studentName}</strong> (Roll: ${rollNo})?<br><br>This will permanently remove:<br>• Student record<br>• Face encodings<br>• User account<br>• All attendance records<br><br><span style="color: #dc3545; font-weight: bold;">This action cannot be undone!</span>`;
+            form.action = `/students/delete/${studentId}`;
+            modal.style.display = 'flex';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target == modal) {
+                closeDeleteModal();
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDeleteModal();
+            }
+        });
+    </script>
 </body>
 </html>
