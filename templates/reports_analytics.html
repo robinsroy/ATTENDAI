@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics - Attendance System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn-header {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            border: 1px solid white;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+        
+        .btn-header:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .btn-download {
+            background: #28a745;
+            border-color: #28a745;
+        }
+        
+        .btn-download:hover {
+            background: #218838;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card .icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stat-card.success .number {
+            color: #28a745;
+        }
+        
+        .stat-card.warning .number {
+            color: #ffc107;
+        }
+        
+        .stat-card.danger .number {
+            color: #dc3545;
+        }
+        
+        .stat-card.info .number {
+            color: #17a2b8;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .chart-card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .table-card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 500;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .percentage {
+            font-weight: bold;
+        }
+        
+        .percentage.high {
+            color: #28a745;
+        }
+        
+        .percentage.medium {
+            color: #ffc107;
+        }
+        
+        .percentage.low {
+            color: #dc3545;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>📊 Reports & Analytics</h1>
+            <div class="header-actions">
+                <a href="{{ url_for('download_report') }}" class="btn-header btn-download">
+                    📥 Download Report (CSV)
+                </a>
+                <a href="{{ url_for('teacher_dashboard') }}" class="btn-header">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Overview Statistics -->
+        <div class="section-header">
+            <h2 class="section-title">Overview Statistics</h2>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">👥</div>
+                <div class="number">{{ total_students }}</div>
+                <div class="label">Total Students</div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="icon">✅</div>
+                <div class="number">{{ enrolled_students }}</div>
+                <div class="label">Face Enrolled</div>
+            </div>
+            
+            <div class="stat-card warning">
+                <div class="icon">⏳</div>
+                <div class="number">{{ pending_students }}</div>
+                <div class="label">Pending Enrollment</div>
+            </div>
+            
+            <div class="stat-card info">
+                <div class="icon">📚</div>
+                <div class="number">{{ classes|length }}</div>
+                <div class="label">Total Classes</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">📋</div>
+                <div class="number">{{ total_attendance_records }}</div>
+                <div class="label">Total Records</div>
+            </div>
+            
+            <div class="stat-card success">
+                <div class="icon">✔️</div>
+                <div class="number">{{ total_present }}</div>
+                <div class="label">Total Present</div>
+            </div>
+            
+            <div class="stat-card danger">
+                <div class="icon">❌</div>
+                <div class="number">{{ total_absent }}</div>
+                <div class="label">Total Absent</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">📈</div>
+                <div class="number">{{ overall_percentage }}%</div>
+                <div class="label">Overall Attendance</div>
+            </div>
+        </div>
+        
+        <!-- Charts Section -->
+        <div class="section-header">
+            <h2 class="section-title">Visual Analytics</h2>
+        </div>
+        
+        <div class="chart-grid">
+            <!-- Overall Attendance Pie Chart -->
+            <div class="chart-card">
+                <h3>📊 Overall Attendance Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="overallPieChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Student Enrollment Pie Chart -->
+            <div class="chart-card">
+                <h3>👤 Student Enrollment Status</h3>
+                <div class="chart-container">
+                    <canvas id="enrollmentPieChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Class-wise Attendance Bar Chart -->
+            {% if class_stats %}
+            <div class="chart-card">
+                <h3>📚 Class-wise Attendance</h3>
+                <div class="chart-container">
+                    <canvas id="classBarChart"></canvas>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Period-wise Attendance Bar Chart -->
+            {% if period_stats %}
+            <div class="chart-card">
+                <h3>⏰ Period-wise Attendance</h3>
+                <div class="chart-container">
+                    <canvas id="periodBarChart"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Student-wise Detailed Report -->
+        <div class="table-card">
+            <div class="section-header">
+                <h3>📋 Student-wise Attendance Report</h3>
+            </div>
+            
+            {% if student_stats %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Roll Number</th>
+                        <th>Student Name</th>
+                        <th>Class</th>
+                        <th>Total Records</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Attendance %</th>
+                        <th>Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in student_stats %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ student.roll_no }}</strong></td>
+                        <td>{{ student.name }}</td>
+                        <td>{{ student.class_name }}</td>
+                        <td>{{ student.total_records }}</td>
+                        <td><span class="badge badge-success">{{ student.present }}</span></td>
+                        <td><span class="badge badge-danger">{{ student.absent }}</span></td>
+                        <td>
+                            <span class="percentage {% if student.percentage >= 75 %}high{% elif student.percentage >= 50 %}medium{% else %}low{% endif %}">
+                                {{ student.percentage }}%
+                            </span>
+                        </td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ student.percentage }}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h3>No Attendance Data Yet</h3>
+                <p>Start marking attendance to see reports and analytics here.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Class-wise Summary -->
+        {% if class_stats %}
+        <div class="table-card">
+            <h3>📚 Class-wise Summary</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class Name</th>
+                        <th>Total Students</th>
+                        <th>Total Records</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for class_name, stats in class_stats.items() %}
+                    {% set class_percentage = (stats.present / stats.total_records * 100) if stats.total_records > 0 else 0 %}
+                    <tr>
+                        <td><strong>{{ class_name }}</strong></td>
+                        <td>{{ stats.students }}</td>
+                        <td>{{ stats.total_records }}</td>
+                        <td><span class="badge badge-success">{{ stats.present }}</span></td>
+                        <td><span class="badge badge-danger">{{ stats.absent }}</span></td>
+                        <td>
+                            <span class="percentage {% if class_percentage >= 75 %}high{% elif class_percentage >= 50 %}medium{% else %}low{% endif %}">
+                                {{ "%.2f"|format(class_percentage) }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        
+        <!-- Period-wise Summary -->
+        {% if period_stats %}
+        <div class="table-card">
+            <h3>⏰ Period-wise Summary</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Total Records</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for period, stats in period_stats.items() %}
+                    {% set period_percentage = (stats.present / stats.total * 100) if stats.total > 0 else 0 %}
+                    <tr>
+                        <td><strong>{{ period }}</strong></td>
+                        <td>{{ stats.total }}</td>
+                        <td><span class="badge badge-success">{{ stats.present }}</span></td>
+                        <td><span class="badge badge-danger">{{ stats.absent }}</span></td>
+                        <td>
+                            <span class="percentage {% if period_percentage >= 75 %}high{% elif period_percentage >= 50 %}medium{% else %}low{% endif %}">
+                                {{ "%.2f"|format(period_percentage) }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        // Overall Attendance Pie Chart
+        const overallCtx = document.getElementById('overallPieChart').getContext('2d');
+        new Chart(overallCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Present', 'Absent'],
+                datasets: [{
+                    data: [{{ total_present }}, {{ total_absent }}],
+                    backgroundColor: ['#28a745', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = {{ total_attendance_records }};
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Enrollment Status Pie Chart
+        const enrollmentCtx = document.getElementById('enrollmentPieChart').getContext('2d');
+        new Chart(enrollmentCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Enrolled', 'Pending'],
+                datasets: [{
+                    data: [{{ enrolled_students }}, {{ pending_students }}],
+                    backgroundColor: ['#28a745', '#ffc107'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = {{ total_students }};
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        {% if class_stats %}
+        // Class-wise Bar Chart
+        const classCtx = document.getElementById('classBarChart').getContext('2d');
+        new Chart(classCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ class_names|tojson }},
+                datasets: [
+                    {
+                        label: 'Present',
+                        data: {{ class_present_data|tojson }},
+                        backgroundColor: '#28a745',
+                    },
+                    {
+                        label: 'Absent',
+                        data: {{ class_absent_data|tojson }},
+                        backgroundColor: '#dc3545',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        {% endif %}
+        
+        {% if period_stats %}
+        // Period-wise Bar Chart
+        const periodCtx = document.getElementById('periodBarChart').getContext('2d');
+        new Chart(periodCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ period_names|tojson }},
+                datasets: [
+                    {
+                        label: 'Present',
+                        data: {{ period_present_data|tojson }},
+                        backgroundColor: '#28a745',
+                    },
+                    {
+                        label: 'Absent',
+                        data: {{ period_absent_data|tojson }},
+                        backgroundColor: '#dc3545',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

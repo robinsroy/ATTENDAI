@@ -38,6 +38,7 @@ class Student(Base):
     class_name = Column(String, nullable=True)
     email = Column(String, nullable=True)
     encodings_path = Column(String, nullable=True)  # path to .npy file with face embeddings
+    profile_photo = Column(String, nullable=True)  # path to profile photo
     
     # Relationship
     user = relationship("User", back_populates="student", foreign_keys=[User.student_id])

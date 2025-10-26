@@ -41,8 +41,66 @@
             gap: 20px;
         }
         
+        .hamburger {
+            cursor: pointer;
+            font-size: 28px;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .hamburger:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 70px;
+            right: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: none;
+            min-width: 200px;
+            z-index: 1000;
+        }
+        
+        .dropdown-menu.show {
+            display: block;
+        }
+        
+        .dropdown-menu a {
+            display: block;
+            padding: 15px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: background 0.3s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dropdown-menu a:first-child {
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .dropdown-menu a:hover {
+            background: #f8f9fa;
+        }
+        
         .user-info {
             font-size: 14px;
+            display: none;
+        }
+        
+        @media (min-width: 768px) {
+            .user-info {
+                display: block;
+            }
         }
         
         .logout-btn {
@@ -53,6 +111,13 @@
             border-radius: 5px;
             text-decoration: none;
             transition: background 0.3s;
+            display: none;
+        }
+        
+        @media (min-width: 768px) {
+            .logout-btn {
+                display: block;
+            }
         }
         
         .logout-btn:hover {
@@ -532,7 +597,15 @@
                     <strong>{{ student.name }}</strong> ({{ student.roll_no }})
                 </div>
                 <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+                <div class="hamburger" onclick="toggleMenu()">☰</div>
             </div>
+        </div>
+        
+        <!-- Dropdown Menu -->
+        <div class="dropdown-menu" id="dropdownMenu">
+            <a href="{{ url_for('student_profile') }}">👤 My Profile</a>
+            <a href="{{ url_for('student_dashboard') }}">📊 Dashboard</a>
+            <a href="{{ url_for('logout') }}">🚪 Logout</a>
         </div>
     </div>
     
@@ -558,12 +631,12 @@
                 <div class="stat-label">Days Present</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ total_records }}</div>
-                <div class="stat-label">Total Records</div>
+                <div class="stat-value">{{ absent_count }}</div>
+                <div class="stat-label">Days Absent</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ student.class_name or 'N/A' }}</div>
-                <div class="stat-label">Class</div>
+                <div class="stat-value">{{ unique_dates }}</div>
+                <div class="stat-label">Total Days</div>
             </div>
         </div>
         
@@ -864,6 +937,16 @@
             if (event.target == modal) {
                 modal.style.display = 'none';
             }
+            
+            // Close dropdown if clicking outside
+            const dropdown = document.getElementById('dropdownMenu');
+            if (!event.target.matches('.hamburger') && dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        }
+        
+        function toggleMenu() {
+            document.getElementById('dropdownMenu').classList.toggle('show');
         }
     </script>
 </body>

@@ -1,9 +1,13 @@
 # app.py
 import os
+import csv
 import cv2
 import base64
 import numpy as np
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from io import StringIO
+from datetime import datetime, timedelta
+from collections import defaultdict
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import Base, engine, SessionLocal, User, Student, Timetable, Attendance
@@ -135,6 +139,154 @@ def teacher_dashboard():
         return redirect(url_for('login'))
     
     return render_template('teacher_dashboard.html', user=current_user)
+
+@app.route('/reports/analytics')
+@login_required
+def reports_analytics():
+    """View attendance reports and analytics"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    # Get all students
+    students = db.query(Student).all()
+    
+    # Get all attendance records
+    attendance_records = db.query(Attendance).all()
+    
+    # Calculate statistics
+    total_students = len(students)
+    enrolled_students = len([s for s in students if s.encodings_path])
+    pending_students = total_students - enrolled_students
+    
+    # Get unique classes
+    classes = list(set([s.class_name for s in students if s.class_name]))
+    
+    # Calculate period-wise statistics
+    period_stats = defaultdict(lambda: {'total': 0, 'present': 0, 'absent': 0})
+    for record in attendance_records:
+        period = record.period
+        period_stats[period]['total'] += 1
+        if record.status.lower() == 'present':
+            period_stats[period]['present'] += 1
+        else:
+            period_stats[period]['absent'] += 1
+    
+    # Calculate student-wise statistics
+    student_stats = []
+    for student in students:
+        student_records = [r for r in attendance_records if r.student_id == student.id]
+        total_records = len(student_records)
+        present_count = len([r for r in student_records if r.status.lower() == 'present'])
+        absent_count = total_records - present_count
+        attendance_percentage = (present_count / total_records * 100) if total_records > 0 else 0
+        
+        student_stats.append({
+            'id': student.id,
+            'name': student.name,
+            'roll_no': student.roll_no,
+            'class_name': student.class_name or '-',
+            'total_records': total_records,
+            'present': present_count,
+            'absent': absent_count,
+            'percentage': round(attendance_percentage, 2)
+        })
+    
+    # Sort by percentage (descending)
+    student_stats.sort(key=lambda x: x['percentage'], reverse=True)
+    
+    # Class-wise statistics
+    class_stats = defaultdict(lambda: {'students': 0, 'total_records': 0, 'present': 0, 'absent': 0})
+    for student in students:
+        class_name = student.class_name or 'No Class'
+        class_stats[class_name]['students'] += 1
+        student_records = [r for r in attendance_records if r.student_id == student.id]
+        class_stats[class_name]['total_records'] += len(student_records)
+        class_stats[class_name]['present'] += len([r for r in student_records if r.status.lower() == 'present'])
+        class_stats[class_name]['absent'] += len(student_records) - class_stats[class_name]['present']
+    
+    # Calculate overall statistics
+    total_attendance_records = len(attendance_records)
+    total_present = len([r for r in attendance_records if r.status.lower() == 'present'])
+    total_absent = total_attendance_records - total_present
+    overall_percentage = (total_present / total_attendance_records * 100) if total_attendance_records > 0 else 0
+    
+    # Prepare chart data (arrays for Chart.js)
+    class_names = sorted(list(class_stats.keys()))
+    class_present_data = [class_stats[c]['present'] for c in class_names]
+    class_absent_data = [class_stats[c]['absent'] for c in class_names]
+    
+    period_names = sorted(list(period_stats.keys()))
+    period_present_data = [period_stats[p]['present'] for p in period_names]
+    period_absent_data = [period_stats[p]['absent'] for p in period_names]
+    
+    db.close()
+    
+    return render_template('reports_analytics.html',
+                         total_students=total_students,
+                         enrolled_students=enrolled_students,
+                         pending_students=pending_students,
+                         classes=classes,
+                         total_attendance_records=total_attendance_records,
+                         total_present=total_present,
+                         total_absent=total_absent,
+                         overall_percentage=round(overall_percentage, 2),
+                         student_stats=student_stats,
+                         period_stats=dict(period_stats),
+                         class_stats=dict(class_stats),
+                         class_names=class_names,
+                         class_present_data=class_present_data,
+                         class_absent_data=class_absent_data,
+                         period_names=period_names,
+                         period_present_data=period_present_data,
+                         period_absent_data=period_absent_data)
+
+@app.route('/reports/download')
+@login_required
+def download_report():
+    """Download attendance report as CSV"""
+    if current_user.role != 'teacher':
+        flash('Access denied! Teachers only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    
+    # Get all attendance records with student info
+    attendance_records = db.query(Attendance).order_by(Attendance.date.desc(), Attendance.period).all()
+    
+    # Create CSV in memory
+    si = StringIO()
+    writer = csv.writer(si)
+    
+    # Write header
+    writer.writerow(['Roll Number', 'Student Name', 'Class', 'Date', 'Period', 'Status'])
+    
+    # Write attendance records
+    for record in attendance_records:
+        student = db.query(Student).filter_by(id=record.student_id).first()
+        if student:
+            # Handle date - might be string or date object
+            date_str = record.date if isinstance(record.date, str) else record.date.strftime('%Y-%m-%d')
+            
+            writer.writerow([
+                student.roll_no,
+                student.name,
+                student.class_name or '-',
+                date_str,
+                record.period,
+                record.status
+            ])
+    
+    db.close()
+    
+    # Create response
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=attendance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    output.headers["Content-type"] = "text/csv"
+    
+    return output
 
 @app.route('/logout')
 @login_required
@@ -653,8 +805,20 @@ def student_dashboard():
     
     # Calculate attendance statistics
     total_records = len(attendance_records)
-    present_count = sum(1 for r in attendance_records if r.status == 'Present')
-    attendance_percentage = round((present_count / total_records * 100), 1) if total_records > 0 else 0
+    present_count = sum(1 for r in attendance_records if r.status.lower() == 'present')
+    absent_count = sum(1 for r in attendance_records if r.status.lower() == 'absent')
+    
+    # Get unique dates to count total days
+    unique_dates = len(set([r.date for r in attendance_records]))
+    
+    # Calculate percentage: (days present / total days) * 100
+    # Count unique dates where student was present
+    present_dates = set([r.date for r in attendance_records if r.status.lower() == 'present'])
+    days_present = len(present_dates)
+    days_absent = unique_dates - days_present
+    
+    # Calculate overall attendance percentage based on unique days
+    attendance_percentage = round((days_present / unique_dates * 100), 1) if unique_dates > 0 else 0.0
     
     db.close()
     
@@ -670,7 +834,9 @@ def student_dashboard():
                          today_attendance=today_attendance,
                          attendance_percentage=attendance_percentage,
                          total_records=total_records,
-                         present_count=present_count)
+                         present_count=days_present,
+                         absent_count=days_absent,
+                         unique_dates=unique_dates)
 
 @app.route('/student/change-password', methods=['GET', 'POST'])
 @login_required
@@ -709,6 +875,90 @@ def change_password():
         return redirect(url_for('student_dashboard'))
     
     return render_template('change_password.html')
+
+@app.route('/student/profile', methods=['GET', 'POST'])
+@login_required
+def student_profile():
+    """Student profile page - view details, change password, upload photo"""
+    if current_user.role != 'student':
+        flash('Access denied! Students only.', 'error')
+        return redirect(url_for('login'))
+    
+    db = SessionLocal()
+    student = db.query(Student).get(current_user.student_id)
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'change_password':
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            # Validation
+            if not current_password or not new_password or not confirm_password:
+                flash('All password fields are required!', 'error')
+            elif new_password != confirm_password:
+                flash('New passwords do not match!', 'error')
+            elif not check_password_hash(current_user.password_hash, current_password):
+                flash('Current password is incorrect!', 'error')
+            else:
+                # Update password
+                user = db.query(User).get(current_user.id)
+                user.password_hash = generate_password_hash(new_password)
+                db.commit()
+                flash('Password changed successfully!', 'success')
+        
+        elif action == 'upload_photo':
+            if 'profile_photo' not in request.files:
+                flash('No file uploaded!', 'error')
+            else:
+                file = request.files['profile_photo']
+                if file.filename == '':
+                    flash('No file selected!', 'error')
+                elif file:
+                    # Save profile photo
+                    import os
+                    from werkzeug.utils import secure_filename
+                    
+                    # Create uploads directory if not exists
+                    upload_folder = os.path.join('static', 'uploads', 'profiles')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    # Save with student roll number as filename
+                    ext = os.path.splitext(file.filename)[1]
+                    filename = f"{student.roll_no}{ext}"
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    
+                    # Update student record
+                    student.profile_photo = f"uploads/profiles/{filename}"
+                    db.commit()
+                    flash('Profile photo updated successfully!', 'success')
+    
+    # Get attendance statistics
+    attendance_records = db.query(Attendance).filter(
+        Attendance.student_id == current_user.student_id
+    ).all()
+    
+    # Count unique dates where student was present
+    unique_dates = len(set([r.date for r in attendance_records]))
+    present_dates = set([r.date for r in attendance_records if r.status.lower() == 'present'])
+    days_present = len(present_dates)
+    days_absent = unique_dates - days_present
+    
+    total_records = len(attendance_records)
+    attendance_percentage = round((days_present / unique_dates * 100), 1) if unique_dates > 0 else 0.0
+    
+    db.close()
+    
+    return render_template('student_profile.html',
+                         user=current_user,
+                         student=student,
+                         total_records=total_records,
+                         present_count=days_present,
+                         absent_count=days_absent,
+                         attendance_percentage=attendance_percentage)
 
 # Setup demo route - creates initial test data
 @app.route('/setup_demo')
