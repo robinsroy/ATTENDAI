@@ -866,11 +866,13 @@ def student_dashboard():
     for entry in timetable_entries:
         if entry.day_of_week not in timetable_grid:
             timetable_grid[entry.day_of_week] = {}
-        timetable_grid[entry.day_of_week][entry.period] = entry
-        all_periods.add(entry.period)
+        # Convert period to int for consistency with attendance table
+        period_int = int(entry.period) if entry.period.isdigit() else int(entry.period.split()[-1])
+        timetable_grid[entry.day_of_week][period_int] = entry
+        all_periods.add(period_int)
     
-    # Sort periods (Period 1, Period 2, etc.)
-    sorted_periods = sorted(list(all_periods), key=lambda x: int(x) if x.isdigit() else (int(x.split()[-1]) if x.split()[-1].isdigit() else 0))
+    # Sort periods (already integers now)
+    sorted_periods = sorted(list(all_periods))
     
     # Get today's date and day
     from datetime import datetime
@@ -879,13 +881,11 @@ def student_dashboard():
     today_day = today.strftime('%A')
     
     # Create attendance lookup: {period: status} for today
-    # Handle both "1" and "Period 1" format
     today_attendance = {}
     for record in attendance_records:
         if record.date == today_date:
-            # Store with period number only (normalize)
-            period_num = record.period.split()[-1] if ' ' in record.period else record.period
-            today_attendance[period_num] = record.status
+            # period is already an integer in the database
+            today_attendance[record.period] = record.status
     
     # Calculate attendance statistics
     total_records = len(attendance_records)
@@ -1304,7 +1304,7 @@ def recognize_frame():
         
         # Match against enrolled students
         print(f"🔍 Matching against {len(ENROLLED)} enrolled students...")
-        matched_id, confidence = match_embedding_to_db(embedding, ENROLLED, threshold=0.40)
+        matched_id, confidence = match_embedding_to_db(embedding, ENROLLED, threshold=0.60)
         
         if matched_id is None:
             print("⚠️ No match found")
@@ -1339,18 +1339,36 @@ def recognize_frame():
             ).first()
             
             if existing:
-                attendance_session['marked_students'].add(matched_id)
-                return jsonify({
-                    'recognized': True,
-                    'already_marked': True,
-                    'student': {
-                        'id': student.id,
-                        'name': student.name,
-                        'roll_no': student.roll_no,
-                        'class_name': student.class_name
-                    },
-                    'message': 'Student already marked today for this period'
-                })
+                # Only allow overwrite if currently marked as absent
+                if existing.status.lower() == 'absent':
+                    existing.status = 'present'
+                    db.commit()
+                    attendance_session['marked_students'].add(matched_id)
+                    return jsonify({
+                        'recognized': True,
+                        'updated': True,
+                        'student': {
+                            'id': student.id,
+                            'name': student.name,
+                            'roll_no': student.roll_no,
+                            'class_name': student.class_name
+                        },
+                        'message': f'Attendance updated from ABSENT to PRESENT for {student.name}'
+                    })
+                else:
+                    # Already marked present - don't overwrite
+                    attendance_session['marked_students'].add(matched_id)
+                    return jsonify({
+                        'recognized': True,
+                        'already_marked': True,
+                        'student': {
+                            'id': student.id,
+                            'name': student.name,
+                            'roll_no': student.roll_no,
+                            'class_name': student.class_name
+                        },
+                        'message': f'{student.name} is already marked PRESENT for this period'
+                    })
             
             # Mark attendance
             attendance = Attendance(
@@ -1390,25 +1408,72 @@ def recognize_frame():
 @app.route('/attendance/stop-session', methods=['POST'])
 @login_required
 def stop_attendance_session():
-    """Stop the current attendance session"""
+    """Stop the current attendance session and mark absent students"""
     if current_user.role != 'teacher':
         return jsonify({'error': 'Access denied'}), 403
     
     try:
-        marked_count = len(attendance_session['marked_students'])
+        if not attendance_session['active']:
+            return jsonify({'error': 'No active session'}), 400
         
-        # Reset session
-        attendance_session['active'] = False
-        attendance_session['class_name'] = None
-        attendance_session['period'] = None
-        attendance_session['date'] = None
-        attendance_session['marked_students'] = set()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Session ended. {marked_count} students marked.',
-            'marked_count': marked_count
-        })
+        db = SessionLocal()
+        try:
+            # Get all students in the class
+            class_name = attendance_session['class_name']
+            period = attendance_session['period']
+            date_today = attendance_session['date']
+            
+            # Get all enrolled students in this class
+            students_in_class = db.query(Student).filter(
+                Student.class_name == class_name,
+                Student.encodings_path.isnot(None)  # Only enrolled students
+            ).all()
+            
+            marked_present_count = len(attendance_session['marked_students'])
+            marked_absent_count = 0
+            
+            # Mark absent for students who were not detected
+            for student in students_in_class:
+                if student.id not in attendance_session['marked_students']:
+                    # Check if already has a record for today's period
+                    existing = db.query(Attendance).filter(
+                        Attendance.student_id == student.id,
+                        Attendance.date == date_today,
+                        Attendance.period == period
+                    ).first()
+                    
+                    if not existing:
+                        # Create new absent record
+                        attendance = Attendance(
+                            student_id=student.id,
+                            date=date_today,
+                            period=period,
+                            status='absent'
+                        )
+                        db.add(attendance)
+                        marked_absent_count += 1
+                    # If existing and was already marked absent, keep it
+            
+            db.commit()
+            
+            # Reset session
+            marked_count = marked_present_count
+            attendance_session['active'] = False
+            attendance_session['class_name'] = None
+            attendance_session['period'] = None
+            attendance_session['date'] = None
+            attendance_session['marked_students'] = set()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Session ended. {marked_present_count} present, {marked_absent_count} marked absent.',
+                'marked_present': marked_present_count,
+                'marked_absent': marked_absent_count,
+                'total_marked': marked_present_count + marked_absent_count
+            })
+        finally:
+            db.close()
+            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
